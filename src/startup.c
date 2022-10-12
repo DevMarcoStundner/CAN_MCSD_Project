@@ -4,6 +4,10 @@
  * 
 */
 
+#include <stdint.h>
+#include "libcmsis/system_stm32l4xx.h"
+#include "libll/stm32l4xx_ll_utils.h"
+
 // Create references to symbols defined in the linker script 
 extern unsigned int _data_start;	
 extern unsigned int _data_end;
@@ -13,14 +17,17 @@ extern unsigned int _bss_end;
 
 void startup();			// Function prototype (forward declaration) for startup function
 int main();			// Function prototype for main function
+void faultHandler();
 
 // Below we create an array of pointers which would form our vector table
 // We use __attribute__ ((section(".vectors"))) to tell the compiler that we want the
 // array to be placed in a memory section that we call ".vectors"
-unsigned int * vectors[2] __attribute__ ((section(".vectors"))) = 
+unsigned int * vectors[4] __attribute__ ((section(".vectors"))) = 
 {
     (unsigned int *)	0x20010000,  	  // Address of top of stack. 20kB = 1024 x 20 = 20480 bytes = 0x5000 
-    (unsigned int *)  startup     	  // Address of the reset handler which is also our startup function
+    (unsigned int *)  startup,    	  // Address of the reset handler which is also our startup function
+    (unsigned int *)  faultHandler,   // NMI interrupt
+    (unsigned int *)  faultHandler    // Hard Fault interrupt
 };
 
 // The startup function, address was provided in the vector table	
@@ -36,8 +43,15 @@ void startup()
 	for (dest = &_bss_start; dest < &_bss_end; dest++)
 		*dest = 0;
 
+  SystemCoreClockUpdate();
+  LL_Init1msTick(SystemCoreClock);
+
 	// Calling the main function
 	main();
 	
 	while(1);	// Normally main() should never return, but just incase we loop infinitely
+}
+
+void faultHandler() {
+  while(1);
 }

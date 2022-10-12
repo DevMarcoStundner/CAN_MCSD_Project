@@ -6,12 +6,11 @@ INCDIR=inc/
 BUILDDIR=build/
 OUTDIR=out/
 
-SOURCES=$(wildcard $(SRCDIR)*.c)
-#INCLUDES=$(addprefix -I, $(sort $(dir $(wildcard $(SRCDIR)*/))))
-INCLUDES=libll libcmsis libcmsis/core
+SOURCES=$(shell find $(SRCDIR) -type f -name "*.c")
+SRCSUBDIRS=$(shell find $(SRCDIR) -mindepth 1 -type d | cut -d '/' -f2-)
 
 LINKSCRIPT=stm32l432.ld
-CFLAGS=-O0 -Wall -c -mcpu=$(CPU) -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 $(addprefix -I$(SRCDIR), $(INCLUDES))
+CFLAGS=-g -O0 -Wall -c -mcpu=$(CPU) -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -I$(SRCDIR) $(addprefix -I$(SRCDIR), $(SRCSUBDIRS))
 TGT=$(OUTDIR)$(PROJECT)
 CC=arm-none-eabi-gcc
 LD=arm-none-eabi-ld
@@ -20,7 +19,7 @@ OBJCOPY=arm-none-eabi-objcopy
 RM=rm -rf
 
 .PHONY: build
-build: $(BUILDDIR) $(OUTDIR) $(TGT).elf $(TGT).bin
+build: dirs $(TGT).elf $(TGT).bin
 
 .PHONY: clean
 clean: 
@@ -32,11 +31,13 @@ $(TGT).elf: $(patsubst $(SRCDIR)%.c, $(BUILDDIR)%.o, $(SOURCES))
 $(TGT).bin: $(TGT).elf
 	$(OBJCOPY) $< $@ -O binary
 
-$(BUILDDIR)%.o:: $(SRCDIR)%.c
+$(BUILDDIR)%.o:: $(SRCDIR)%.c $(dir $(BUILDDIR)%.o)
 	$(CC) $(CFLAGS) -o $@ $<
 
-$(BUILDDIR):
-	mkdir $@
+.PHONY: dirs
+dirs:
+	mkdir $(BUILDDIR) $(OUTDIR) $(addprefix $(BUILDDIR), $(SRCSUBDIRS))
 
-$(OUTDIR):
-	mkdir $@
+.PHONY: flash
+flash: build
+	st-flash write $(TGT).bin 0x08000000
