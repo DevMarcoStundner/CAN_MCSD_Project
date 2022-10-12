@@ -16,6 +16,6 @@ typedef struct {
 void CS_Init(uint16_t);
 void CS_RGB_Set(CS_RGB_TypeDef);
 
-void CS_LoopHandler();
+void CS_LoopHandler(uint32_t);
 
 #endif
