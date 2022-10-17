@@ -7,26 +7,35 @@
 #include "os/os.h"
 #include "clickshield/clickshield.h"
 
-void HardFault_Handler() {
-  while(1);
+volatile static CS_RGB_TypeDef rgbcolor = {0,0,128};
+
+void controlloop(uint32_t looptime) {
+  LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_3);
+  CS_LoopHandler(looptime);
+  LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_3);
+}
+
+void btnhandler(CS_BTN_Action_TypeDef value) {
+  switch(value) {
+    case CS_BTN_Action_Click:
+      rgbcolor[0] = 255; break;
+    case CS_BTN_Action_Longpress:
+      rgbcolor[0] = 0; break;
+  }
+  CS_RGB_SetDim(rgbcolor);
 }
 
 int main()
 {
-  /*
-  */
-  CS_Init(CS_INIT_BUTTON | CS_INIT_RGB);
-  CS_RGB_TypeDef rgbcolor = {1,1,1};
-  CS_RGB_Set(rgbcolor);
+  CS_Init(CS_INIT_BTN | CS_INIT_RGB | CS_INIT_DIM);
+  CS_BTN_SetCallback(btnhandler);
+  CS_RGB_SetDim(rgbcolor);
 
   LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOB);
   LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_3, LL_GPIO_MODE_OUTPUT);
-  LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_3);
+  os_setcallback(controlloop);
 
 	while (1) {
-    uint32_t looptime = os_time();
-    CS_LoopHandler(looptime);
-    LL_mDelay(250);
   }
 	return 0;
 }

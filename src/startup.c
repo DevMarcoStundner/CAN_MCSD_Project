@@ -19,112 +19,183 @@ extern unsigned int _bss_end;
 
 void startup();			// Function prototype (forward declaration) for startup function
 int main();			// Function prototype for main function
-void faultHandler();
+void defaultIntHandler(void);
+void faultIntHandler(void);
+
+void NMI_Handler(void) __attribute ((weak, alias("faultIntHandler")));
+void HardFault_Handler(void) __attribute ((weak, alias("defaultIntHandler")));
+void MemManage_Handler(void) __attribute ((weak, alias("defaultIntHandler")));
+void BusFault_Handler(void) __attribute ((weak, alias("defaultIntHandler")));
+void UsageFault_Handler(void) __attribute ((weak, alias("defaultIntHandler")));
+void SVC_Handler(void) __attribute ((weak, alias("defaultIntHandler")));
+void DebugMon_Handler(void) __attribute ((weak, alias("defaultIntHandler")));
+void PendSV_Handler(void) __attribute ((weak, alias("defaultIntHandler")));
+void SysTick_Handler(void) __attribute ((weak, alias("defaultIntHandler")));
+void WWDG_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void PVD_PVM_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void TAMP_STAMP_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void RTC_WKUP_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void FLASH_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void RCC_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void EXTI0_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void EXTI1_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void EXTI2_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void EXTI3_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void EXTI4_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void DMA1_Channel1_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void DMA1_Channel2_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void DMA1_Channel3_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void DMA1_Channel4_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void DMA1_Channel5_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void DMA1_Channel6_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void DMA1_Channel7_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void ADC1_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void CAN1_TX_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void CAN1_RX0_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void CAN1_RX1_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void CAN1_SCE_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void EXTI9_5_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void TIM1_BRK_TIM15_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void TIM1_UP_TIM16_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void TIM1_TRG_COM_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void TIM1_CC_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void TIM2_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void I2C1_EV_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void I2C1_ER_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void SPI1_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void USART1_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void USART2_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void EXTI15_10_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void RTC_Alarm_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void SPI3_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void TIM6_DAC_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void TIM7_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void DMA2_Channel1_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void DMA2_Channel2_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void DMA2_Channel3_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void DMA2_Channel4_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void DMA2_Channel5_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void COMP_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void LPTIM1_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void LPTIM2_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void USB_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void DMA2_Channel6_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void DMA2_Channel7_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void LPUART1_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void QUADSPI_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void I2C3_EV_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void I2C3_ER_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void SAI1_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void SWPMI1_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void TSC_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void RNG_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void FPU_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
+void CRS_IRQHandler(void) __attribute ((weak, alias("defaultIntHandler")));
 
 // Below we create an array of pointers which would form our vector table
 // We use __attribute__ ((section(".vectors"))) to tell the compiler that we want the
 // array to be placed in a memory section that we call ".vectors"
-unsigned int * vectors[] __attribute__ ((section(".vectors"))) = 
+void (*vectors[])(void) __attribute__ ((section(".vectors"))) = 
 {
-    (unsigned int *)	0x20010000,  	  // Address of top of stack. 20kB = 1024 x 20 = 20480 bytes = 0x5000 
-    (unsigned int *)  startup,    	  // Address of the reset handler which is also our startup function
-    (unsigned int *)  NMI_Handler,   // NMI interrupt
-    (unsigned int *)  HardFault_Handler,   // Hard Fault interrupt
-	  (unsigned int *) 	MemManage_Handler,
-	  (unsigned int *) 	BusFault_Handler,
-	  (unsigned int *) 	UsageFault_Handler,
-	  (unsigned int *) 	0,
-	  (unsigned int *) 	0,
-	  (unsigned int *) 	0,
-	  (unsigned int *) 	0,
-	  (unsigned int *) 	SVC_Handler,
-	  (unsigned int *) 	DebugMon_Handler,
-	  (unsigned int *) 	0,
-	  (unsigned int *) 	PendSV_Handler,
-	  (unsigned int *) 	SysTick_Handler,
-	  (unsigned int *) 	WWDG_IRQHandler,
-	  (unsigned int *) 	PVD_PVM_IRQHandler,
-	  (unsigned int *) 	TAMP_STAMP_IRQHandler,
-	  (unsigned int *) 	RTC_WKUP_IRQHandler,
-	  (unsigned int *) 	FLASH_IRQHandler,
-	  (unsigned int *) 	RCC_IRQHandler,
-	  (unsigned int *) 	EXTI0_IRQHandler,
-	  (unsigned int *) 	EXTI1_IRQHandler,
-	  (unsigned int *) 	EXTI2_IRQHandler,
-	  (unsigned int *) 	EXTI3_IRQHandler,
-	  (unsigned int *) 	EXTI4_IRQHandler,
-	  (unsigned int *) 	DMA1_Channel1_IRQHandler,
-	  (unsigned int *) 	DMA1_Channel2_IRQHandler,
-	  (unsigned int *) 	DMA1_Channel3_IRQHandler,
-	  (unsigned int *) 	DMA1_Channel4_IRQHandler,
-	  (unsigned int *) 	DMA1_Channel5_IRQHandler,
-	  (unsigned int *) 	DMA1_Channel6_IRQHandler,
-	  (unsigned int *) 	DMA1_Channel7_IRQHandler,
-	  (unsigned int *) 	ADC1_IRQHandler,
-	  (unsigned int *) 	CAN1_TX_IRQHandler,
-	  (unsigned int *) 	CAN1_RX0_IRQHandler,
-	  (unsigned int *) 	CAN1_RX1_IRQHandler,
-	  (unsigned int *) 	CAN1_SCE_IRQHandler,
-	  (unsigned int *) 	EXTI9_5_IRQHandler,
-	  (unsigned int *) 	TIM1_BRK_TIM15_IRQHandler,
-	  (unsigned int *) 	TIM1_UP_TIM16_IRQHandler,
-	  (unsigned int *) 	TIM1_TRG_COM_IRQHandler,
-	  (unsigned int *) 	TIM1_CC_IRQHandler,
-	  (unsigned int *) 	TIM2_IRQHandler,
-	  (unsigned int *) 	0,
-	  (unsigned int *) 	0,
-	  (unsigned int *) 	I2C1_EV_IRQHandler,
-	  (unsigned int *) 	I2C1_ER_IRQHandler,
-	  (unsigned int *) 	0,
-	  (unsigned int *) 	0,
-	  (unsigned int *) 	SPI1_IRQHandler,
-	  (unsigned int *) 	0,
-	  (unsigned int *) 	USART1_IRQHandler,
-	  (unsigned int *) 	USART2_IRQHandler,
-	  (unsigned int *) 	0,
-	  (unsigned int *) 	EXTI15_10_IRQHandler,
-	  (unsigned int *) 	RTC_Alarm_IRQHandler,
-	  (unsigned int *) 	0,
-	  (unsigned int *) 	0,
-	  (unsigned int *) 	0,
-	  (unsigned int *) 	0,
-	  (unsigned int *) 	0,
-	  (unsigned int *) 	0,
-	  (unsigned int *) 	0,
-	  (unsigned int *) 	0,
-	  (unsigned int *) 	0,
-	  (unsigned int *) 	SPI3_IRQHandler,
-	  (unsigned int *) 	0,
-	  (unsigned int *) 	0,
-	  (unsigned int *) 	TIM6_DAC_IRQHandler,
-	  (unsigned int *) 	TIM7_IRQHandler,
-	  (unsigned int *) 	DMA2_Channel1_IRQHandler,
-	  (unsigned int *) 	DMA2_Channel2_IRQHandler,
-	  (unsigned int *) 	DMA2_Channel3_IRQHandler,
-	  (unsigned int *) 	DMA2_Channel4_IRQHandler,
-	  (unsigned int *) 	DMA2_Channel5_IRQHandler,
-	  (unsigned int *) 	0,
-	  (unsigned int *) 	0,
-	  (unsigned int *) 	0,
-	  (unsigned int *) 	COMP_IRQHandler,
-	  (unsigned int *) 	LPTIM1_IRQHandler,
-	  (unsigned int *) 	LPTIM2_IRQHandler,
-	  (unsigned int *) 	USB_IRQHandler,
-	  (unsigned int *) 	DMA2_Channel6_IRQHandler,
-	  (unsigned int *) 	DMA2_Channel7_IRQHandler,
-	  (unsigned int *) 	LPUART1_IRQHandler,
-	  (unsigned int *) 	QUADSPI_IRQHandler,
-	  (unsigned int *) 	I2C3_EV_IRQHandler,
-	  (unsigned int *) 	I2C3_ER_IRQHandler,
-	  (unsigned int *) 	SAI1_IRQHandler,
-	  (unsigned int *) 	0,
-	  (unsigned int *) 	SWPMI1_IRQHandler,
-	  (unsigned int *) 	TSC_IRQHandler,
-	  (unsigned int *) 	0,
-	  (unsigned int *) 	0,
-	  (unsigned int *) 	RNG_IRQHandler,
-	  (unsigned int *) 	FPU_IRQHandler,
-	  (unsigned int *) 	CRS_IRQHandler
+    (void (*)(void))	0x20010000,  	  // Address of top of stack. 20kB = 1024 x 20 = 20480 bytes = 0x5000 
+    (void (*)(void))  startup,    	  // Address of the reset handler which is also our startup function
+    (void (*)(void))  NMI_Handler,   // NMI interrupt
+    (void (*)(void))  HardFault_Handler,   // Hard Fault interrupt
+	  (void (*)(void)) 	MemManage_Handler,
+	  (void (*)(void)) 	BusFault_Handler,
+	  (void (*)(void)) 	UsageFault_Handler,
+	  (void (*)(void)) 	0,
+	  (void (*)(void)) 	0,
+	  (void (*)(void)) 	0,
+	  (void (*)(void)) 	0,
+	  (void (*)(void)) 	SVC_Handler,
+	  (void (*)(void)) 	DebugMon_Handler,
+	  (void (*)(void)) 	0,
+	  (void (*)(void)) 	PendSV_Handler,
+	  (void (*)(void)) 	SysTick_Handler,
+	  (void (*)(void)) 	WWDG_IRQHandler,
+	  (void (*)(void)) 	PVD_PVM_IRQHandler,
+	  (void (*)(void)) 	TAMP_STAMP_IRQHandler,
+	  (void (*)(void)) 	RTC_WKUP_IRQHandler,
+	  (void (*)(void)) 	FLASH_IRQHandler,
+	  (void (*)(void)) 	RCC_IRQHandler,
+	  (void (*)(void)) 	EXTI0_IRQHandler,
+	  (void (*)(void)) 	EXTI1_IRQHandler,
+	  (void (*)(void)) 	EXTI2_IRQHandler,
+	  (void (*)(void)) 	EXTI3_IRQHandler,
+	  (void (*)(void)) 	EXTI4_IRQHandler,
+	  (void (*)(void)) 	DMA1_Channel1_IRQHandler,
+	  (void (*)(void)) 	DMA1_Channel2_IRQHandler,
+	  (void (*)(void)) 	DMA1_Channel3_IRQHandler,
+	  (void (*)(void)) 	DMA1_Channel4_IRQHandler,
+	  (void (*)(void)) 	DMA1_Channel5_IRQHandler,
+	  (void (*)(void)) 	DMA1_Channel6_IRQHandler,
+	  (void (*)(void)) 	DMA1_Channel7_IRQHandler,
+	  (void (*)(void)) 	ADC1_IRQHandler,
+	  (void (*)(void)) 	CAN1_TX_IRQHandler,
+	  (void (*)(void)) 	CAN1_RX0_IRQHandler,
+	  (void (*)(void)) 	CAN1_RX1_IRQHandler,
+	  (void (*)(void)) 	CAN1_SCE_IRQHandler,
+	  (void (*)(void)) 	EXTI9_5_IRQHandler,
+	  (void (*)(void)) 	TIM1_BRK_TIM15_IRQHandler,
+	  (void (*)(void)) 	TIM1_UP_TIM16_IRQHandler,
+	  (void (*)(void)) 	TIM1_TRG_COM_IRQHandler,
+	  (void (*)(void)) 	TIM1_CC_IRQHandler,
+	  (void (*)(void)) 	TIM2_IRQHandler,
+	  (void (*)(void)) 	0,
+	  (void (*)(void)) 	0,
+	  (void (*)(void)) 	I2C1_EV_IRQHandler,
+	  (void (*)(void)) 	I2C1_ER_IRQHandler,
+	  (void (*)(void)) 	0,
+	  (void (*)(void)) 	0,
+	  (void (*)(void)) 	SPI1_IRQHandler,
+	  (void (*)(void)) 	0,
+	  (void (*)(void)) 	USART1_IRQHandler,
+	  (void (*)(void)) 	USART2_IRQHandler,
+	  (void (*)(void)) 	0,
+	  (void (*)(void)) 	EXTI15_10_IRQHandler,
+	  (void (*)(void)) 	RTC_Alarm_IRQHandler,
+	  (void (*)(void)) 	0,
+	  (void (*)(void)) 	0,
+	  (void (*)(void)) 	0,
+	  (void (*)(void)) 	0,
+	  (void (*)(void)) 	0,
+	  (void (*)(void)) 	0,
+	  (void (*)(void)) 	0,
+	  (void (*)(void)) 	0,
+	  (void (*)(void)) 	0,
+	  (void (*)(void)) 	SPI3_IRQHandler,
+	  (void (*)(void)) 	0,
+	  (void (*)(void)) 	0,
+	  (void (*)(void)) 	TIM6_DAC_IRQHandler,
+	  (void (*)(void)) 	TIM7_IRQHandler,
+	  (void (*)(void)) 	DMA2_Channel1_IRQHandler,
+	  (void (*)(void)) 	DMA2_Channel2_IRQHandler,
+	  (void (*)(void)) 	DMA2_Channel3_IRQHandler,
+	  (void (*)(void)) 	DMA2_Channel4_IRQHandler,
+	  (void (*)(void)) 	DMA2_Channel5_IRQHandler,
+	  (void (*)(void)) 	0,
+	  (void (*)(void)) 	0,
+	  (void (*)(void)) 	0,
+	  (void (*)(void)) 	COMP_IRQHandler,
+	  (void (*)(void)) 	LPTIM1_IRQHandler,
+	  (void (*)(void)) 	LPTIM2_IRQHandler,
+	  (void (*)(void)) 	USB_IRQHandler,
+	  (void (*)(void)) 	DMA2_Channel6_IRQHandler,
+	  (void (*)(void)) 	DMA2_Channel7_IRQHandler,
+	  (void (*)(void)) 	LPUART1_IRQHandler,
+	  (void (*)(void)) 	QUADSPI_IRQHandler,
+	  (void (*)(void)) 	I2C3_EV_IRQHandler,
+	  (void (*)(void)) 	I2C3_ER_IRQHandler,
+	  (void (*)(void)) 	SAI1_IRQHandler,
+	  (void (*)(void)) 	0,
+	  (void (*)(void)) 	SWPMI1_IRQHandler,
+	  (void (*)(void)) 	TSC_IRQHandler,
+	  (void (*)(void)) 	0,
+	  (void (*)(void)) 	0,
+	  (void (*)(void)) 	RNG_IRQHandler,
+	  (void (*)(void)) 	FPU_IRQHandler,
+	  (void (*)(void)) 	CRS_IRQHandler
 };
 
 // The startup function, address was provided in the vector table	
@@ -140,8 +211,7 @@ void startup()
 	for (dest = &_bss_start; dest < &_bss_end; dest++)
 		*dest = 0;
 
-  SystemCoreClockUpdate();
-  os_inittime();
+  os_init();
 
 	// Calling the main function
 	main();
@@ -149,11 +219,10 @@ void startup()
 	while(1);	// Normally main() should never return, but just incase we loop infinitely
 }
 
-static void defaultIntHandler() {
+void defaultIntHandler() {
   while(1);
 }
 
-static void faultIntHandler() {
+void faultIntHandler() {
   while(1);
 }
-
