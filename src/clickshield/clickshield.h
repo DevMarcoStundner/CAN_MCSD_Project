@@ -22,7 +22,7 @@ typedef enum {
 void CS_Init(uint16_t);
 void CS_BTN_SetCallback(void (*)(CS_BTN_Action_TypeDef));
 void CS_RGB_SetDim(CS_RGB_TypeDef);
-void CS_RGB_SetPins(CS_RGB_TypeDef);
+void CS_RGB_SetPins(volatile CS_RGB_TypeDef);
 bool CS_BTN_ReadRaw();
 bool CS_BTN_ReadDeb();
 

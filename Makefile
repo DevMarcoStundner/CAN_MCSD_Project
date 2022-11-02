@@ -10,10 +10,12 @@ SOURCES=$(shell find $(SRCDIR) -type f -name "*.c")
 SRCSUBDIRS=$(shell find $(SRCDIR) -mindepth 1 -type d | cut -d '/' -f2-)
 
 LINKSCRIPT=stm32l432.ld
-CFLAGS=-g -O0 -D USE_FULL_LL_DRIVER -Wall -c -mcpu=$(CPU) -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -I$(SRCDIR) $(addprefix -I$(SRCDIR), $(SRCSUBDIRS))
+COMMONFLAGS=-O0 -std=gnu99 -nostdlib -lgcc
+CFLAGS=$(COMMONFLAGS) -nostartfiles -D USE_FULL_LL_DRIVER -W -Wall -c -mcpu=$(CPU) -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -I$(SRCDIR) $(addprefix -I$(SRCDIR), $(SRCSUBDIRS))
+LDFLAGS=-T $(LINKSCRIPT) $(COMMONFLAGS) -static -L /usr/lib/gcc/arm-none-eabi/12.2.0/thumb/v7e-m+fp/hard/
 TGT=$(OUTDIR)$(PROJECT)
-CC=arm-none-eabi-gcc
-LD=arm-none-eabi-ld
+CC=/usr/bin/arm-none-eabi-gcc
+LD=/usr/bin/arm-none-eabi-gcc
 OBJCOPY=arm-none-eabi-objcopy
 
 RM=rm -rf
@@ -26,7 +28,7 @@ clean:
 	$(RM) $(BUILDDIR) $(OUTDIR)
 
 $(TGT).elf: $(patsubst $(SRCDIR)%.c, $(BUILDDIR)%.o, $(SOURCES))
-	$(LD) -T $(LINKSCRIPT) -o $@ $^
+	$(LD) $(LDFLAGS)  -o $@ $^
 
 $(TGT).bin: $(TGT).elf
 	$(OBJCOPY) $< $@ -O binary
@@ -36,7 +38,7 @@ $(BUILDDIR)%.o:: $(SRCDIR)%.c $(dir $(BUILDDIR)%.o)
 
 .PHONY: dirs
 dirs:
-	mkdir $(BUILDDIR) $(OUTDIR) $(addprefix $(BUILDDIR), $(SRCSUBDIRS))
+	mkdir -p $(BUILDDIR) $(OUTDIR) $(addprefix $(BUILDDIR), $(SRCSUBDIRS))
 
 .PHONY: flash
 flash: build

@@ -14,13 +14,13 @@ static peripheralsTypeDef activePeripherals = {0,0,0,0};
 static const uint32_t rgbpinmask = LL_GPIO_PIN_4 | LL_GPIO_PIN_6 | LL_GPIO_PIN_8;
 static const uint32_t rgbperiod = 5;
 static const uint32_t rgbpins[3] = {6, 8, 4}; // red, green, blue
-volatile static uint8_t rgbvalues[3] = {0,0,0};
-volatile static uint8_t rgbstates[3] = {0,0,0};
-static const uint8_t btndelay = 10;
-static const uint8_t btnlongpress = 500;
-static bool btnvalue = false;
+static uint8_t rgbvalues[3] = {0,0,0};
+static volatile uint8_t rgbstates[3] = {0,0,0};
+static const uint32_t btndelay = 10;
+static const uint32_t btnlongpress = 500;
 static void (*btncallback)(CS_BTN_Action_TypeDef) = 0;
 static const bool btnactstate = false;
+static bool btnvalue = !btnactstate;
 
 static void btnEventHandler(uint32_t time) {
   static uint32_t btnepoch = 0;
@@ -33,6 +33,10 @@ static void btnEventHandler(uint32_t time) {
   }
 }
 
+/**
+ * @brief general clickshield handler, has to be called once per tick or less from userspace
+ * @param current_time contains the current tick time value
+ */
 void CS_LoopHandler(uint32_t current_time) {
   static uint32_t rgbepoch = 0;
   static uint32_t btnlastfix = 0;
@@ -50,12 +54,17 @@ void CS_LoopHandler(uint32_t current_time) {
     if ((current_time-btnlastfix > btndelay) && (btntmp != btnvalue)) {
       btnvalue = btntmp;
       btnEventHandler(current_time);
-    } else if (btntmp != btnvalue) {
+    } else if (btntmp == btnvalue) {
       btnlastfix = current_time;
     }
   }
 }
 
+/**
+ * @brief Initializes the clickshield components
+ * @param initDevices is a bitmask where each bit corresponds to one component
+ * @note see clickshield.h for CS_INIT_x defines
+ */
 void CS_Init(uint16_t initDevices) {
   if (initDevices & CS_INIT_RGB || initDevices & CS_INIT_DIM) {
     activePeripherals.rgb = true;
@@ -73,6 +82,7 @@ void CS_Init(uint16_t initDevices) {
     activePeripherals.dim = true;
   }
   if (initDevices & CS_INIT_BTN) {
+    activePeripherals.btn = true;
     LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOA);
     LL_GPIO_InitTypeDef s_gpioinit;
     LL_GPIO_StructInit(&s_gpioinit);
@@ -84,25 +94,46 @@ void CS_Init(uint16_t initDevices) {
   }
 }
 
+/**
+ * @brief set button event callback function
+ * @param function is a function pointer which takes a CS_BTN_Action_TypeDef enum
+ */
 void CS_BTN_SetCallback(void (*function)(CS_BTN_Action_TypeDef)) {
   btncallback = function;
 }
 
+/**
+ * @brief read debounced button value
+ * @retval a boolean indicating GPIO level
+ */
 bool CS_BTN_ReadDeb() {
   return btnvalue;
 }
 
+/**
+ * @brief read raw(not debounced) button value
+ * @retval a boolean indicating GPIO level
+ */
 bool CS_BTN_ReadRaw() {
   return LL_GPIO_IsInputPinSet(GPIOA, LL_GPIO_PIN_3);
 }
 
+/**
+ * @brief set dimming values for rgb component
+ * @param color a struct containing r,g,b values
+ */
 void CS_RGB_SetDim(CS_RGB_TypeDef color) {
   for (uint8_t i=0; i<3; i++) {
     rgbvalues[i] = rgbperiod * color[i] / 255;
   }
 }
 
-void CS_RGB_SetPins(CS_RGB_TypeDef color) {
+/**
+ * @brief directly set the gpio levels
+ * @param color a struct specifying the levels for r,g,b
+ * @note 0 means off, anything else is read as on
+ */
+void CS_RGB_SetPins(volatile CS_RGB_TypeDef color) {
   uint32_t pinstates = 0;
   for (uint8_t i=0; i<3; i++) {
     if (color[i]) {

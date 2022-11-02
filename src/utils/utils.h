@@ -3,6 +3,6 @@
 
 #include <stdint.h>
 
-void UT_byteset(uint8_t *dest, char ch, uint32_t count);
+void UT_byteset(uint8_t *dest, uint8_t ch, uint32_t count);
 
 #endif
