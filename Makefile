@@ -12,10 +12,10 @@ SRCSUBDIRS=$(shell find $(SRCDIR) -mindepth 1 -type d | cut -d '/' -f2-)
 LINKSCRIPT=stm32l432.ld
 COMMONFLAGS=-O0 -std=gnu99 -nostdlib -lgcc
 CFLAGS=$(COMMONFLAGS) -nostartfiles -D USE_FULL_LL_DRIVER -W -Wall -c -mcpu=$(CPU) -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -I$(SRCDIR) $(addprefix -I$(SRCDIR), $(SRCSUBDIRS))
-LDFLAGS=-T $(LINKSCRIPT) $(COMMONFLAGS) -static -L /usr/lib/gcc/arm-none-eabi/12.2.0/thumb/v7e-m+fp/hard/
+LDFLAGS=-T $(LINKSCRIPT) $(COMMONFLAGS) -static #-L /usr/lib/gcc/arm-none-eabi/12.2.0/thumb/v7e-m+fp/hard/
 TGT=$(OUTDIR)$(PROJECT)
-CC=/usr/bin/arm-none-eabi-gcc
-LD=/usr/bin/arm-none-eabi-gcc
+CC=arm-none-eabi-gcc
+LD=arm-none-eabi-gcc
 OBJCOPY=arm-none-eabi-objcopy
 
 RM=rm -rf
