@@ -42,4 +42,4 @@ dirs:
 
 .PHONY: flash
 flash: build
-	st-flash --reset write $(TGT).bin 0x08000000
+	st-flash --connect-under-reset --reset write $(TGT).bin 0x08000000
