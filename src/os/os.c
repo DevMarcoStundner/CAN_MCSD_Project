@@ -1,6 +1,8 @@
 #include "os.h"
 #include "libcmsis/system_stm32l4xx.h"
 #include "libll/stm32l4xx_ll_utils.h"
+#include "libll/stm32l4xx_ll_rcc.h"
+#include "libll/stm32l4xx_ll_system.h"
 #include "startup.h"
 
 static volatile uint64_t time = 0;
@@ -29,6 +31,23 @@ void os_setcallback(void (*newcallback)(uint32_t)) {
  * @note This is only called via startup.c
  */
 void os_init() {
+  // Enable and check that HSI is running
+  LL_RCC_HSI_Enable();
+  while(!LL_RCC_HSI_IsReady());
+  // 16MHz up to 320MHz and down to 80MHz for sysclk
+  LL_RCC_PLL_ConfigDomain_SYS(LL_RCC_PLLSOURCE_HSI, LL_RCC_PLLM_DIV_4, 80, LL_RCC_PLLR_DIV_4);
+  LL_RCC_PLL_Enable();
+  // optional: add timeout error to pllrdy
+  while(!LL_RCC_PLL_IsReady());
+  // Enable R output to sysclk mux
+  LL_RCC_PLL_EnableDomain_SYS();
+  // config axb bus presc for 1
+  // update and check flash wait states
+  LL_FLASH_SetLatency(LL_FLASH_LATENCY_4);
+  while(LL_FLASH_LATENCY_4 != LL_FLASH_GetLatency());
+  // enable and check that pll is system clock source
+  LL_RCC_SetSysClkSource(LL_RCC_SYS_CLKSOURCE_PLL);
+  while(LL_RCC_SYS_CLKSOURCE_STATUS_PLL != LL_RCC_GetSysClkSource());
   time = 0;
   SystemCoreClockUpdate();
   LL_Init1msTick(SystemCoreClock);
