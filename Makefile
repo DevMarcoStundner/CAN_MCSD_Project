@@ -10,9 +10,9 @@ SOURCES=$(shell find $(SRCDIR) -type f -name "*.c")
 SRCSUBDIRS=$(shell find $(SRCDIR) -mindepth 1 -type d | cut -d '/' -f2-)
 
 LINKSCRIPT=stm32l432.ld
-COMMONFLAGS=-O0 -std=gnu99 -nostdlib -lgcc
-CFLAGS=$(COMMONFLAGS) -nostartfiles -D USE_FULL_LL_DRIVER -W -Wall -c -mcpu=$(CPU) -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -I$(SRCDIR) $(addprefix -I$(SRCDIR), $(SRCSUBDIRS))
-LDFLAGS=-T $(LINKSCRIPT) $(COMMONFLAGS) -static #-L /usr/lib/gcc/arm-none-eabi/12.2.0/thumb/v7e-m+fp/hard/
+COMMONFLAGS=-std=gnu99 -mcpu=$(CPU) -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16
+CFLAGS=$(COMMONFLAGS) -O0 -D USE_FULL_LL_DRIVER -W -Wall -c -mcpu=$(CPU) -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -I$(SRCDIR) $(addprefix -I$(SRCDIR), $(SRCSUBDIRS))
+LDFLAGS=-T $(LINKSCRIPT) $(COMMONFLAGS) -nostartfiles -lm -lnosys
 TGT=$(OUTDIR)$(PROJECT)
 CC=arm-none-eabi-gcc
 LD=arm-none-eabi-gcc
