@@ -10,7 +10,7 @@ SOURCES=$(shell find $(SRCDIR) -type f -name "*.c")
 SRCSUBDIRS=$(shell find $(SRCDIR) -mindepth 1 -type d | cut -d '/' -f2-)
 
 LINKSCRIPT=stm32l432.ld
-COMMONFLAGS=-std=gnu99 -mcpu=$(CPU) -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16
+COMMONFLAGS=-std=gnu99 -mcpu=$(CPU) -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -g
 CFLAGS=$(COMMONFLAGS) -O0 -D USE_FULL_LL_DRIVER -W -Wall -c -mcpu=$(CPU) -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -I$(SRCDIR) $(addprefix -I$(SRCDIR), $(SRCSUBDIRS))
 LDFLAGS=-T $(LINKSCRIPT) $(COMMONFLAGS) -nostartfiles -lm -lnosys
 TGT=$(OUTDIR)$(PROJECT)

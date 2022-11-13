@@ -1,11 +1,16 @@
 #include "os.h"
 #include "libcmsis/system_stm32l4xx.h"
 #include "libll/stm32l4xx_ll_utils.h"
+#include "libll/stm32l4xx_ll_bus.h"
 #include "libll/stm32l4xx_ll_rcc.h"
 #include "libll/stm32l4xx_ll_system.h"
+#include "libll/stm32l4xx_ll_tim.h"
 #include "startup.h"
 
+#include "libll/stm32l4xx_ll_gpio.h"
+
 static volatile uint64_t time = 0;
+static void (*timeout_callback)() = NULL;
 static void (*callback)(uint32_t) = NULL;
 static os_timer_TypeDef active_timers[OS_MAX_TIMERS] = {0};
 
@@ -15,6 +20,18 @@ static os_timer_TypeDef active_timers[OS_MAX_TIMERS] = {0};
 void SysTick_Handler() {
   time++;
   if (callback != NULL) callback(time);
+}
+
+/**
+ * @brief Interrupt handler for TIM2 interrupts, used for the timeout functions
+ */
+void TIM2_IRQHandler() {
+  if (LL_TIM_IsActiveFlag_UPDATE(TIM2)) {
+    LL_TIM_ClearFlag_UPDATE(TIM2);
+    if (timeout_callback != NULL) {
+      timeout_callback();
+    }
+  }
 }
 
 /**
@@ -50,6 +67,11 @@ void os_init() {
   while(LL_RCC_SYS_CLKSOURCE_STATUS_PLL != LL_RCC_GetSysClkSource());
   time = 0;
   SystemCoreClockUpdate();
+  // enable TIM2 for timeout
+  LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM2);
+  NVIC_EnableIRQ(TIM2_IRQn);
+  NVIC_SetPriority(TIM2_IRQn, 0x01);
+  // configure and enable systick 1ms interrupt
   LL_Init1msTick(SystemCoreClock);
   SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk;
 }
@@ -57,6 +79,7 @@ void os_init() {
 /**
  * @brief gets the full 64 bit time value
  * @note the current build configuration does not allow more than addition with 64 bit values, so be careful
+ * @note this was fixed in 5d665cc
  */
 uint64_t os_fulltime() {
   return time;
@@ -71,7 +94,7 @@ uint32_t os_time() {
 }
 
 /**
- * @brief add tiemr with callback
+ * @brief add timer with callback
  * @param altime is the tick count the callback will be called
  * @param callback is a function pointer which takes one uint32
  * @note a maximum of OS_MAX_TIMERS timers may be used
@@ -87,4 +110,44 @@ int8_t os_setalarm(uint64_t altime, void (*callback)(uint32_t)) {
     }
   }
   return -1;
+}
+
+/**
+ * @brief start precision timer
+ * @param timeout_ns number of Nanoseconds to wait
+ * @param callback function to call when timeout ends. When callback == NULL, the function blocks for that time instead
+ * @retval 0 when the timeout was started(finished for blocking) successfully, != 0 in case of an error
+ */
+uint8_t os_timeout(uint64_t timeout_ns, void(*callback)()) {
+  // calculate timer settings
+  uint64_t scaled_timeout = timeout_ns*SystemCoreClock/(1e9);
+  if (scaled_timeout == 0) {
+    return 1; //timeout is too small
+  }
+  LL_TIM_InitTypeDef tim2_init;
+  LL_TIM_StructInit(&tim2_init);
+  tim2_init.Prescaler = scaled_timeout/((uint64_t)1<<32);
+  tim2_init.Autoreload = scaled_timeout%((uint64_t)1<<32);
+  // check if timeout is already active
+  if (LL_TIM_IsEnabledCounter(TIM2)) {
+    return 1;
+  }
+  LL_TIM_DisableIT_UPDATE(TIM2);
+  LL_TIM_SetUpdateSource(TIM2, LL_TIM_UPDATESOURCE_COUNTER); // maybe remove if init does not work
+  LL_TIM_SetOnePulseMode(TIM2, LL_TIM_ONEPULSEMODE_SINGLE);
+  LL_TIM_Init(TIM2, &tim2_init);
+  // set callback
+  timeout_callback = callback;
+  // activate timer
+  LL_TIM_ClearFlag_UPDATE(TIM2);
+  LL_TIM_EnableIT_UPDATE(TIM2);
+  LL_TIM_EnableCounter(TIM2);
+  if(callback == NULL) {
+    // sleep as long as timer is running
+    // while is in here as other interrupts(e.g. systick) still fire
+    while(LL_TIM_IsEnabledCounter(TIM2)) {
+      __WFI();
+    }
+  }
+  return 0;
 }

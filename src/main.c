@@ -21,9 +21,9 @@ static const uint8_t patterncnt = sizeof(patterns)/sizeof(CS_RGB_TypeDef);
  * @params looptime contains the tick count value
  */
 void controlloop(uint32_t looptime) {
-  LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_3);
+  //LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_3);
   CS_LoopHandler(looptime);
-  LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_3);
+  //LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_3);
 }
 
 /**
@@ -44,10 +44,19 @@ void btnhandler(CS_BTN_Action_TypeDef value) {
   CS_RGB_SetDim(patterns[patindex]);
 }
 
+/**
+ * @brief callback to demonstrate the os_timeout functionality
+ */
+void timeouthandler() {
+  LL_GPIO_TogglePin(GPIOB, LL_GPIO_PIN_3);
+}
+
+
 int main()
 {
   LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOB);
   LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_3, LL_GPIO_MODE_OUTPUT);
+  LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_3);
 
   CS_Init(CS_INIT_BTN | CS_INIT_RGB | CS_INIT_DIM);
   CS_BTN_SetCallback(btnhandler);
@@ -55,7 +64,13 @@ int main()
 
   os_setcallback(controlloop);
 
+  // light the board diode for 3 seconds
+  os_timeout(3e9, timeouthandler);
+
 	while (1) {
+    // toggle the board diode with a period of 500ms
+    os_timeout(250e6, NULL);
+    LL_GPIO_TogglePin(GPIOB, LL_GPIO_PIN_3);
   }
 	return 0;
 }
