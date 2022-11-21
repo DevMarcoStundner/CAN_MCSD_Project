@@ -17,21 +17,21 @@ SECTIONS
 
   .data :     /* Define output file DATA section */
   {
-    _data_start = .;	/* Get the memory address (VMA) for start of section .data */
+    __data_start__ = .;	/* Get the memory address (VMA) for start of section .data */
     *(.data)		      /* Initialized static and global variable values */
     . = ALIGN(4); 
-    _data_end = .;	  /* Get the memory address (VMA) for end of section .data */
+    __data_end__ = .;	  /* Get the memory address (VMA) for end of section .data */
   } >ram AT >rom			/* After AT we specify the load-time location */
 
-  _data_load = LOADADDR(.data);	/* Get the load memory address (LMA) for section .data */
+  __data_load__ = LOADADDR(.data);	/* Get the load memory address (LMA) for section .data */
 
 
   .bss :				/* Define output file BSS section */
   {
-    _bss_start = .; /* Get memory address of start of bss section */
+    __bss_start__ = .; /* Get memory address of start of bss section */
     *(.bss)			    /* Uninitialized static and global variables */
     *(COMMON)		    /* Uninitialized variables are placed in COMMON section for object files */
     . = ALIGN(4);	
-    _bss_end = .;		/* Get memory address of end of bss section */
+    __bss_end__ = .;		/* Get memory address of end of bss section */
   } >ram
 }

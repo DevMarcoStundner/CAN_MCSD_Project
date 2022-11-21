@@ -51,7 +51,6 @@ void timeouthandler() {
   LL_GPIO_TogglePin(GPIOB, LL_GPIO_PIN_3);
 }
 
-
 int main()
 {
   LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOB);

@@ -12,7 +12,7 @@ SRCSUBDIRS=$(shell find $(SRCDIR) -mindepth 1 -type d | cut -d '/' -f2-)
 LINKSCRIPT=stm32l432.ld
 COMMONFLAGS=-std=gnu99 -mcpu=$(CPU) -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -g
 CFLAGS=$(COMMONFLAGS) -O0 -D USE_FULL_LL_DRIVER -W -Wall -c -mcpu=$(CPU) -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -I$(SRCDIR) $(addprefix -I$(SRCDIR), $(SRCSUBDIRS))
-LDFLAGS=-T $(LINKSCRIPT) $(COMMONFLAGS) -nostartfiles -lm -lnosys
+LDFLAGS=-T $(LINKSCRIPT) $(COMMONFLAGS) -lm --specs=nano.specs #-nostartfiles
 TGT=$(OUTDIR)$(PROJECT)
 CC=arm-none-eabi-gcc
 LD=arm-none-eabi-gcc
@@ -43,3 +43,7 @@ dirs:
 .PHONY: flash
 flash: build
 	st-flash --connect-under-reset --reset write $(TGT).bin 0x08000000
+
+.PHONY: debug
+debug: build
+	./debug.sh

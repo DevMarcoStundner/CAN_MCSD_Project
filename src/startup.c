@@ -12,11 +12,11 @@
 #include "os/os.h"
 
 // Create references to symbols defined in the linker script 
-extern unsigned int _data_start;	
-extern unsigned int _data_end;
-extern unsigned int _data_load;
-extern unsigned int _bss_start;
-extern unsigned int _bss_end;
+extern unsigned int __data_start__;	
+extern unsigned int __data_end__;
+extern unsigned int __data_load__;
+extern unsigned int __bss_start__;
+extern unsigned int __bss_end__;
 
 void startup();			// Function prototype (forward declaration) for startup function
 int main();			// Function prototype for main function
@@ -205,12 +205,14 @@ void startup()
 	volatile unsigned int *src, *dest;
 
 	// Copy data section values from load time memory address (LMA) to their address in SRAM 
-	for (src = &_data_load, dest = &_data_start; dest < &_data_end; src++, dest++) 
+	for (src = &__data_load__, dest = &__data_start__; dest < &__data_end__; src++, dest++) 
 		*dest = *src;
 	
 	// Initialize all uninitialized variables (bss section) to 0
-	for (dest = &_bss_start; dest < &_bss_end; dest++)
+	for (dest = &__bss_start__; dest < &__bss_end__; dest++)
 		*dest = 0;
+
+  //__libc_init_array();
 
   os_init();
 
