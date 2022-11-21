@@ -64,6 +64,13 @@ In contrast to the above, it allows for multiple simultaneous timers (set via
 `OS_MAX_TIMERS`), but has a fairly low accuracy (+- 1ms) as it uses the sytick 
 timer.
 
+# Serial Console
+## Format specification
+
+## Implementation notes
+For both RX and TX, DMA instance 1 will be used.
+The RX channel will get medium priority, the TX channel will get low priority.
+
 # How To
 ## Makefile
 The makefile contains the following commands:
