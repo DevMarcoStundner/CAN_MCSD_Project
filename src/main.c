@@ -24,6 +24,7 @@ void controlloop(uint32_t looptime) {
   //LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_3);
   CS_LoopHandler(looptime);
   //LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_3);
+  ser_handle();
 }
 
 /**
@@ -60,6 +61,8 @@ int main()
   CS_Init(CS_INIT_BTN | CS_INIT_RGB | CS_INIT_DIM);
   CS_BTN_SetCallback(btnhandler);
   CS_RGB_SetDim(rgbcolor);
+
+  ser_init();
 
   os_setcallback(controlloop);
 

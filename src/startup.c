@@ -24,10 +24,10 @@ void defaultIntHandler(void);
 void faultIntHandler(void);
 
 void NMI_Handler(void) __attribute ((weak, alias("faultIntHandler")));
-void HardFault_Handler(void) __attribute ((weak, alias("defaultIntHandler")));
+void HardFault_Handler(void) __attribute ((weak, alias("faultIntHandler")));
 void MemManage_Handler(void) __attribute ((weak, alias("defaultIntHandler")));
-void BusFault_Handler(void) __attribute ((weak, alias("defaultIntHandler")));
-void UsageFault_Handler(void) __attribute ((weak, alias("defaultIntHandler")));
+void BusFault_Handler(void) __attribute ((weak, alias("faultIntHandler")));
+void UsageFault_Handler(void) __attribute ((weak, alias("faultIntHandler")));
 void SVC_Handler(void) __attribute ((weak, alias("defaultIntHandler")));
 void DebugMon_Handler(void) __attribute ((weak, alias("defaultIntHandler")));
 void PendSV_Handler(void) __attribute ((weak, alias("defaultIntHandler")));

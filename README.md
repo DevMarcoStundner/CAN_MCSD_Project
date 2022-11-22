@@ -77,3 +77,9 @@ The makefile contains the following commands:
 - build -> creates the .elf and .bin file from source
 - clean -> clears all temporary files
 - flash -> flashes the bin file via st-util
+
+## Serial Console
+Because of the whack specification, minicom does not handle the crlf lf etc 
+translation correctly. Therefore, it is advisable to use the program *picocom* 
+with the command `picocom -b 9600 --parity n --omap crlf --imap lfcrlf --echo 
+/dev/ttyUSB0`.
