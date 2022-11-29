@@ -33,7 +33,7 @@ struct ser_buf_TypeDef {
   ser_buf_TypeDef * next_buffer;
 };
 
-static ser_cmds_TypeDef commands[SER_MAX_COMMANDS] = {[0 ... SER_MAX_COMMANDS-1] = {'\0',NULL}};
+static ser_cmds_TypeDef commands[SER_MAX_COMMANDS] = {{'\0',NULL}};
 static ser_buf_TypeDef cmd_buffers[SER_CMDBUFCNT] = {0};
 static ser_buf_TypeDef * volatile cur_rx_buf = NULL;
 static ser_buf_TypeDef * volatile cur_tx_buf = NULL;
@@ -87,8 +87,8 @@ void USART2_IRQHandler(void) {
 // SER_UARTPERIPH_TX
 void DMA1_Channel7_IRQHandler(void){
   // if dma complete
-  if (LL_DMA_IsActiveFlag_TC4(DMA1)) {
-    LL_DMA_ClearFlag_TC4(DMA1);
+  if (LL_DMA_IsActiveFlag_TC7(DMA1)) {
+    LL_DMA_ClearFlag_TC7(DMA1);
     LL_DMA_DisableChannel(DMA1, SER_DMATX);
     cur_tx_buf->used=false;
     if (cur_tx_buf->next_buffer != NULL) {
@@ -105,8 +105,8 @@ void DMA1_Channel7_IRQHandler(void){
 // SER_UARTPERIPH_RX
 void DMA1_Channel6_IRQHandler(void){
   // if complete 
-  if (LL_DMA_IsActiveFlag_TC5(DMA1)) {
-    LL_DMA_ClearFlag_TC5(DMA1);
+  if (LL_DMA_IsActiveFlag_TC6(DMA1)) {
+    LL_DMA_ClearFlag_TC6(DMA1);
     LL_DMA_DisableChannel(DMA1, SER_DMARX);
     // command was too long
     if (cur_rx_buf->used == false) {
@@ -138,15 +138,20 @@ void ser_handle() {
 }
 
 void ser_init() {
+  for (int i=0; i<SER_MAX_COMMANDS; i++) {
+    commands[i].cmd = '\0';
+    commands[i].cb = NULL;
+  }
   // config io pins
   LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOA);
   LL_GPIO_InitTypeDef gpio_init;
   LL_GPIO_StructInit(&gpio_init);
-  gpio_init.Pin = LL_GPIO_PIN_9;
+  gpio_init.Pin = LL_GPIO_PIN_15;
   gpio_init.Mode = LL_GPIO_MODE_ALTERNATE;
-  gpio_init.Alternate = LL_GPIO_AF_7;
+  gpio_init.Alternate = LL_GPIO_AF_3;
   LL_GPIO_Init(GPIOA, &gpio_init);
-  gpio_init.Pin = LL_GPIO_PIN_10;
+  gpio_init.Pin = LL_GPIO_PIN_2;
+  gpio_init.Alternate = LL_GPIO_AF_7;
   LL_GPIO_Init(GPIOA, &gpio_init);
 
   // enable clks
@@ -297,6 +302,7 @@ static void transmit_response(ser_buf_TypeDef *buffer) {
 
 static void handle_command(ser_buf_TypeDef * buffer) {
   char scratchpad[SER_MAX_RESPLEN+1];
+  scratchpad[0] = '\0';
   scratchpad[SER_MAX_RESPLEN] = '\0';
   buffer->next_buffer = NULL;
   // check for sof
@@ -310,14 +316,18 @@ static void handle_command(ser_buf_TypeDef * buffer) {
         // call command function
         uint8_t retval = commands[i].cb(scratchpad, buffer->buf+3);
         if (retval) {
-          snprintf(buffer->buf, SER_CMDBUFLEN, "NACK\n#?,%s\n", scratchpad);
+          if (strlen(scratchpad) == 0) {
+            snprintf(buffer->buf, SER_CMDBUFLEN, "NACK\n#?,General error\n", scratchpad);
+          } else {
+            snprintf(buffer->buf, SER_CMDBUFLEN, "NACK\n#?,%s\n", scratchpad);
+          }
         } else {
           snprintf(buffer->buf, SER_CMDBUFLEN, "ACK\n#%c,%s\n", cmd, scratchpad);
         }
         break;
-      } else {
+      } 
+      if (i == SER_MAX_COMMANDS-1) {
         snprintf(buffer->buf, SER_CMDBUFLEN, "NACK\n#?,Command was not found\n");
-        break;
       }
     }
   } else {

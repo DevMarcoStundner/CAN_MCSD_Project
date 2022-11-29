@@ -62,11 +62,13 @@ static uint8_t seradd(char * outbuf, char * const cmdbuf) {
   if (blocation != NULL) {
     b = atoi(blocation+1);
   } else {
+    snprintf(outbuf, SER_MAX_RESPLEN, "Missing Argument error");
     return 1;
   }
   if (a!=0 && b!=0) {
     snprintf(outbuf, SER_MAX_RESPLEN, "result: %d", a+b);
   } else {
+    snprintf(outbuf, SER_MAX_RESPLEN, "Argument error");
     return 1;
   }
   return 0;
@@ -89,9 +91,9 @@ int main()
   CS_BTN_SetCallback(btnhandler);
   CS_RGB_SetDim(rgbcolor);
 
-  //ser_init();
-  ser_addcmd('h', serhelp);
+  ser_init();
   ser_addcmd('a', seradd);
+  ser_addcmd('h', serhelp);
 
   os_setcallback(controlloop);
 
