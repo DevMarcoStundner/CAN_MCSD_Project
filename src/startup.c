@@ -19,15 +19,12 @@ extern unsigned int __bss_start__;
 extern unsigned int __bss_end__;
 
 void startup();			// Function prototype (forward declaration) for startup function
-int main();			// Function prototype for main function
-void defaultIntHandler(void);
-void faultIntHandler(void);
 
-void NMI_Handler(void) __attribute ((weak, alias("faultIntHandler")));
-void HardFault_Handler(void) __attribute ((weak, alias("faultIntHandler")));
+__attribute__((noreturn)) void NMI_Handler(void) __attribute ((weak, alias("faultIntHandler")));
+__attribute__((noreturn)) void HardFault_Handler(void) __attribute ((weak, alias("faultIntHandler")));
 void MemManage_Handler(void) __attribute ((weak, alias("defaultIntHandler")));
-void BusFault_Handler(void) __attribute ((weak, alias("faultIntHandler")));
-void UsageFault_Handler(void) __attribute ((weak, alias("faultIntHandler")));
+__attribute__((noreturn)) void BusFault_Handler(void) __attribute ((weak, alias("faultIntHandler")));
+__attribute__((noreturn)) void UsageFault_Handler(void) __attribute ((weak, alias("faultIntHandler")));
 void SVC_Handler(void) __attribute ((weak, alias("defaultIntHandler")));
 void DebugMon_Handler(void) __attribute ((weak, alias("defaultIntHandler")));
 void PendSV_Handler(void) __attribute ((weak, alias("defaultIntHandler")));
@@ -213,7 +210,6 @@ void startup()
 		*dest = 0;
 
   //__libc_init_array();
-
   os_init();
 
 	// Calling the main function
@@ -226,6 +222,6 @@ void defaultIntHandler() {
   while(1);
 }
 
-void faultIntHandler() {
+__attribute__((noreturn, optimize("O0"))) void faultIntHandler() {
   while(1);
 }

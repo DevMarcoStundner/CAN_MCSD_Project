@@ -1,7 +1,9 @@
 #ifndef STARTUP_H
 #define STARTUP_H
 
-
+extern int main();			// Function prototype for main function
+void defaultIntHandler(void);
+__attribute__((noreturn)) void faultIntHandler(void);
 /*
 void NMI_Handler(void);
 void HardFault_Handler(void);

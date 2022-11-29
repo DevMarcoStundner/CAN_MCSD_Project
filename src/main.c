@@ -5,7 +5,12 @@
 #include "libll/stm32l4xx_ll_gpio.h"
 
 #include "os/os.h"
+#include "utils/serial.h"
 #include "clickshield/clickshield.h"
+
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
 
 static volatile CS_RGB_TypeDef rgbcolor = {0,0,10};
 static const CS_RGB_TypeDef patterns[] = {
@@ -20,7 +25,7 @@ static const uint8_t patterncnt = sizeof(patterns)/sizeof(CS_RGB_TypeDef);
  * @brief control loop callback for os tick
  * @params looptime contains the tick count value
  */
-void controlloop(uint32_t looptime) {
+static void controlloop(uint32_t looptime) {
   //LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_3);
   CS_LoopHandler(looptime);
   //LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_3);
@@ -45,6 +50,28 @@ void btnhandler(CS_BTN_Action_TypeDef value) {
   CS_RGB_SetDim(patterns[patindex]);
 }
 
+static uint8_t serhelp(char * outbuf, char * const cmdbuf __attribute__((unused))) {
+  sprintf(outbuf, "Command format: #<c>,arg,arg\\n  c->command");
+  return 0;
+}
+
+static uint8_t seradd(char * outbuf, char * const cmdbuf) {
+  int a=0,b=0;
+  a = atoi(cmdbuf);
+  char * const blocation = strchr(cmdbuf,',');
+  if (blocation != NULL) {
+    b = atoi(blocation+1);
+  } else {
+    return 1;
+  }
+  if (a!=0 && b!=0) {
+    snprintf(outbuf, SER_MAX_RESPLEN, "result: %d", a+b);
+  } else {
+    return 1;
+  }
+  return 0;
+}
+
 /**
  * @brief callback to demonstrate the os_timeout functionality
  */
@@ -62,7 +89,9 @@ int main()
   CS_BTN_SetCallback(btnhandler);
   CS_RGB_SetDim(rgbcolor);
 
-  ser_init();
+  //ser_init();
+  ser_addcmd('h', serhelp);
+  ser_addcmd('a', seradd);
 
   os_setcallback(controlloop);
 

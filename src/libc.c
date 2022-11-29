@@ -1,8 +1,9 @@
 #include <stddef.h>
+#include "startup.h"
 
 extern int __bss_end__;
 
-void _exit() {
+void _exit(int excode __attribute__((unused))) {
   faultIntHandler();
 }
 

@@ -13,5 +13,6 @@
 
 void ser_init();
 void ser_handle();
+uint8_t ser_addcmd(char cmd, uint8_t (*func)(char*,char*));
 
 #endif

@@ -12,6 +12,10 @@
 #include "libll/stm32l4xx_ll_dma.h"
 #include "libll/stm32l4xx_ll_gpio.h"
 
+#define SER_UARTPERIPH USART2
+#define SER_DMATX LL_DMA_CHANNEL_7
+#define SER_DMARX LL_DMA_CHANNEL_6
+
 typedef struct {
   char cmd;
   uint8_t (*cb)(char*, char*);
@@ -41,68 +45,69 @@ static ser_buf_TypeDef * get_first_buf(ser_buf_TypeDef * startbuf);
 static ser_buf_TypeDef * get_last_buf(ser_buf_TypeDef * startbuf);
 static ser_buf_TypeDef * get_prev_buf(ser_buf_TypeDef * startbuf);
 
-void USART1_IRQHandler(void) {
+void USART2_IRQHandler(void) {
   // if char match
-  if (LL_USART_IsActiveFlag_CM(USART1)) {
-    LL_USART_ClearFlag_CM(USART1);
+  if (LL_USART_IsActiveFlag_CM(SER_UARTPERIPH)) {
+    LL_USART_ClearFlag_CM(SER_UARTPERIPH);
+    //LL_USART_DisableDirectionRx(SER_UARTPERIPH);
     // mark buffer as valid
-    //LL_USART_DisableDirectionRx(USART1);
     cur_rx_buf->used = true;
-    LL_USART_EnableIT_IDLE(USART1);
-    // re-enable rx?
-  } else if (LL_USART_IsActiveFlag_IDLE(USART1)) {
-    LL_USART_DisableIT_IDLE(USART1);
-    LL_USART_ClearFlag_IDLE(USART1);
+    LL_USART_EnableIT_IDLE(SER_UARTPERIPH);
+  } else if (LL_USART_IsActiveFlag_IDLE(SER_UARTPERIPH)) {
+    LL_USART_DisableIT_IDLE(SER_UARTPERIPH);
+    LL_USART_ClearFlag_IDLE(SER_UARTPERIPH);
     // disable dma
     if (cur_rx_buf->used == true) {
-      LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_5);
+      LL_DMA_DisableChannel(DMA1, SER_DMARX);
       // switch to new buffer
       ser_buf_TypeDef * newbuf = get_free_buf();
       if (newbuf == NULL) {
         cur_rx_buf->used = false;
+        // could transmit no free buffer error message here, but no free buffer is available
       } else {
         cur_rx_buf->next_buffer = newbuf;
         cur_rx_buf = newbuf;
       }
-      while (LL_DMA_IsEnabledChannel(DMA1, LL_DMA_CHANNEL_5));
-      LL_DMA_SetMemoryAddress(DMA1, LL_DMA_CHANNEL_5, (uint32_t)cur_rx_buf);
-      LL_DMA_SetDataLength(DMA1, LL_DMA_CHANNEL_5, SER_CMDBUFLEN);
+      while (LL_DMA_IsEnabledChannel(DMA1, SER_DMARX));
+      LL_DMA_SetMemoryAddress(DMA1, SER_DMARX, (uint32_t)cur_rx_buf->buf);
+      LL_DMA_SetDataLength(DMA1, SER_DMARX, SER_CMDBUFLEN);
       // re-enable dma
-      LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_5);
-      LL_USART_EnableDirectionRx(USART1);
+      LL_DMA_EnableChannel(DMA1, SER_DMARX);
+      LL_USART_EnableDirectionRx(SER_UARTPERIPH);
     }
-  } else if (LL_USART_IsActiveFlag_TC(USART1)) {
-    LL_USART_ClearFlag_TC(USART1);
+  } else if (LL_USART_IsActiveFlag_TC(SER_UARTPERIPH)) {
+    LL_USART_ClearFlag_TC(SER_UARTPERIPH);
   // if tx complete
     // dma should be finished
-  } else if (LL_USART_IsActiveFlag_ORE(USART1)) {
+  } else if (LL_USART_IsActiveFlag_ORE(SER_UARTPERIPH)) {
   // if rx overrun
   }
 }
 
-// USART1_TX
-void DMA1_Channel4_IRQHandler(void){
+// SER_UARTPERIPH_TX
+void DMA1_Channel7_IRQHandler(void){
   // if dma complete
   if (LL_DMA_IsActiveFlag_TC4(DMA1)) {
-    LL_DMA_ClearFlag_TC5(DMA1);
-    LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_4);
+    LL_DMA_ClearFlag_TC4(DMA1);
+    LL_DMA_DisableChannel(DMA1, SER_DMATX);
     cur_tx_buf->used=false;
     if (cur_tx_buf->next_buffer != NULL) {
       cur_tx_buf = cur_tx_buf->next_buffer;
-      LL_DMA_SetMemoryAddress(DMA1, LL_DMA_CHANNEL_4, (uint32_t)cur_tx_buf);
-      LL_DMA_SetDataLength(DMA1, LL_DMA_CHANNEL_4, strlen(cur_tx_buf->buf));
-      LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_4);
+      LL_DMA_SetMemoryAddress(DMA1, SER_DMATX, (uint32_t)cur_tx_buf->buf);
+      LL_DMA_SetDataLength(DMA1, SER_DMATX, strlen(cur_tx_buf->buf));
+      LL_DMA_EnableChannel(DMA1, SER_DMATX);
     } else {
       cur_tx_buf = NULL;
     }
   }
 }
 
-// USART1_RX
-void DMA1_Channel5_IRQHandler(void){
+// SER_UARTPERIPH_RX
+void DMA1_Channel6_IRQHandler(void){
   // if complete 
   if (LL_DMA_IsActiveFlag_TC5(DMA1)) {
     LL_DMA_ClearFlag_TC5(DMA1);
+    LL_DMA_DisableChannel(DMA1, SER_DMARX);
     // command was too long
     if (cur_rx_buf->used == false) {
       ser_buf_TypeDef * txbuf = get_free_buf();
@@ -110,10 +115,10 @@ void DMA1_Channel5_IRQHandler(void){
         sprintf(txbuf->buf, "NACK\n#?,Command too long\n");
         transmit_response(txbuf);
       }
-      LL_DMA_SetMemoryAddress(DMA1, LL_DMA_CHANNEL_5, (uint32_t)cur_rx_buf);
-      LL_DMA_SetDataLength(DMA1, LL_DMA_CHANNEL_5, SER_CMDBUFLEN);
+      LL_DMA_SetMemoryAddress(DMA1, SER_DMARX, (uint32_t)cur_rx_buf->buf);
+      LL_DMA_SetDataLength(DMA1, SER_DMARX, SER_CMDBUFLEN);
       // enable dma
-      LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_5);
+      LL_DMA_EnableChannel(DMA1, SER_DMARX);
     }
   }
   // else error response
@@ -145,26 +150,26 @@ void ser_init() {
   LL_GPIO_Init(GPIOA, &gpio_init);
 
   // enable clks
-  LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_USART1);
+  LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_USART2);
   LL_USART_InitTypeDef usart_init;
   LL_USART_StructInit(&usart_init);
   // config baud rate
-  usart_init.BaudRate = 9600;
+  usart_init.BaudRate = 115200;
   usart_init.TransferDirection = LL_USART_DIRECTION_TX_RX;
-  LL_USART_Init(USART1, &usart_init);
-  //LL_USART_SetRXPinLevel(USART1, LL_USART_RXPIN_LEVEL_INVERTED);
-  //LL_USART_SetTXPinLevel(USART1, LL_USART_TXPIN_LEVEL_INVERTED);
-  //LL_USART_ClearFlag_TC(USART1);
-  LL_USART_EnableDMAReq_RX(USART1);
-  LL_USART_EnableDMAReq_TX(USART1);
+  ErrorStatus ret = LL_USART_Init(SER_UARTPERIPH, &usart_init);
+  //LL_USART_SetRXPinLevel(SER_UARTPERIPH, LL_USART_RXPIN_LEVEL_INVERTED);
+  //LL_USART_SetTXPinLevel(SER_UARTPERIPH, LL_USART_TXPIN_LEVEL_INVERTED);
+  //LL_USART_ClearFlag_TC(SER_UARTPERIPH);
+  LL_USART_EnableDMAReq_RX(SER_UARTPERIPH);
+  LL_USART_EnableDMAReq_TX(SER_UARTPERIPH);
   // config interrupts
-  //LL_USART_DisableIT_TC(USART1);
-  LL_USART_EnableIT_CM(USART1);
-  LL_USART_EnableIT_ERROR(USART1);
-  NVIC_EnableIRQ(USART1_IRQn);
-  NVIC_SetPriority(USART1_IRQn, 0x02);
+  //LL_USART_DisableIT_TC(SER_UARTPERIPH);
+  LL_USART_EnableIT_CM(SER_UARTPERIPH);
+  LL_USART_EnableIT_ERROR(SER_UARTPERIPH);
+  NVIC_EnableIRQ(USART2_IRQn);
+  NVIC_SetPriority(USART2_IRQn, 0x02);
   // config character match
-  LL_USART_ConfigNodeAddress(USART1, LL_USART_ADDRESS_DETECT_7B, '\n');
+  LL_USART_ConfigNodeAddress(SER_UARTPERIPH, LL_USART_ADDRESS_DETECT_7B, '\n');
 
   cur_rx_buf = &cmd_buffers[0];
 
@@ -173,34 +178,34 @@ void ser_init() {
   LL_DMA_InitTypeDef dma_init;
   // dma for rx
   LL_DMA_StructInit(&dma_init);
-  dma_init.PeriphOrM2MSrcAddress = (uint32_t)&(USART1->RDR);
+  dma_init.PeriphOrM2MSrcAddress = (uint32_t)&(SER_UARTPERIPH->RDR);
   dma_init.MemoryOrM2MDstAddress = (uint32_t)cur_rx_buf->buf;
   dma_init.MemoryOrM2MDstIncMode = LL_DMA_MEMORY_INCREMENT;
   dma_init.Direction = LL_DMA_DIRECTION_PERIPH_TO_MEMORY;
   dma_init.NbData = SER_CMDBUFLEN;
   dma_init.PeriphRequest = LL_DMA_REQUEST_2;
   dma_init.Priority = LL_DMA_PRIORITY_HIGH;
-  LL_DMA_Init(DMA1, LL_DMA_CHANNEL_5, &dma_init);
+  LL_DMA_Init(DMA1, SER_DMARX, &dma_init);
 
   // dma for tx
-  dma_init.PeriphOrM2MSrcAddress = (uint32_t)&(USART1->TDR);
+  dma_init.PeriphOrM2MSrcAddress = (uint32_t)&(SER_UARTPERIPH->TDR);
   dma_init.MemoryOrM2MDstAddress = (uint32_t)NULL;
   dma_init.Direction = LL_DMA_DIRECTION_MEMORY_TO_PERIPH;
   dma_init.NbData = 0;
   dma_init.PeriphRequest = LL_DMA_REQUEST_2;
   dma_init.Priority = LL_DMA_PRIORITY_MEDIUM;
-  LL_DMA_Init(DMA1, LL_DMA_CHANNEL_4, &dma_init);
+  LL_DMA_Init(DMA1, SER_DMATX, &dma_init);
   // config dma interrups
-  LL_DMA_EnableIT_TC(DMA1, LL_DMA_CHANNEL_5);
-  LL_DMA_EnableIT_TC(DMA1, LL_DMA_CHANNEL_4);
-  NVIC_EnableIRQ(DMA1_Channel5_IRQn);
-  NVIC_SetPriority(DMA1_Channel5_IRQn, 0x03);
-  NVIC_EnableIRQ(DMA1_Channel4_IRQn);
-  NVIC_SetPriority(DMA1_Channel4_IRQn, 0x03);
+  LL_DMA_EnableIT_TC(DMA1, SER_DMARX);
+  LL_DMA_EnableIT_TC(DMA1, SER_DMATX);
+  NVIC_EnableIRQ(DMA1_Channel7_IRQn);
+  NVIC_SetPriority(DMA1_Channel7_IRQn, 0x03);
+  NVIC_EnableIRQ(DMA1_Channel6_IRQn);
+  NVIC_SetPriority(DMA1_Channel6_IRQn, 0x03);
   // enable dma
-  LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_5);
+  LL_DMA_EnableChannel(DMA1, SER_DMARX);
   // enable uart
-  LL_USART_Enable(USART1);
+  LL_USART_Enable(SER_UARTPERIPH);
 }
 
 /*
@@ -281,9 +286,9 @@ static void transmit_response(ser_buf_TypeDef *buffer) {
       buffer->next_buffer = NULL;
       cur_tx_buf = buffer;
       // dma setup
-      LL_DMA_SetDataLength(DMA1, LL_DMA_CHANNEL_4, strlen(buffer->buf));
-      LL_DMA_SetMemoryAddress(DMA1, LL_DMA_CHANNEL_4, (uint32_t)buffer->buf);
-      LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_4);
+      LL_DMA_SetDataLength(DMA1, SER_DMATX, strlen(buffer->buf));
+      LL_DMA_SetMemoryAddress(DMA1, SER_DMATX, (uint32_t)buffer->buf);
+      LL_DMA_EnableChannel(DMA1, SER_DMATX);
     } else {
       get_last_buf(cur_tx_buf)->next_buffer = buffer;
     }
@@ -296,12 +301,14 @@ static void handle_command(ser_buf_TypeDef * buffer) {
   buffer->next_buffer = NULL;
   // check for sof
   // check for single eof
-  if ((buffer->buf[0] == '#') && (strchr(buffer->buf,'\n') != NULL)) {
+  char * eos = strchr(buffer->buf,'\n');
+  if ((buffer->buf[0] == '#') && (eos != NULL)) {
+    *eos = '\0';
     for (int i=0; i<SER_MAX_COMMANDS; i++) {
       char cmd = commands[i].cmd;
-      if ((isalpha(cmd)) && (buffer->buf[1] == cmd)) {
+      if ((isprint(cmd)) && (buffer->buf[1] == cmd)) {
         // call command function
-        uint8_t retval = commands[i].cb(scratchpad, strchr(buffer->buf, ','));
+        uint8_t retval = commands[i].cb(scratchpad, buffer->buf+3);
         if (retval) {
           snprintf(buffer->buf, SER_CMDBUFLEN, "NACK\n#?,%s\n", scratchpad);
         } else {
@@ -313,6 +320,8 @@ static void handle_command(ser_buf_TypeDef * buffer) {
         break;
       }
     }
+  } else {
+    snprintf(buffer->buf, SER_CMDBUFLEN, "NACK\n#?,Invalid Command Format\n");
   }
   // send response
   transmit_response(buffer);
