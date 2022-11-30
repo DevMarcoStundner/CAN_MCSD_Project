@@ -115,7 +115,9 @@ uint8_t myadc_getval(uint16_t * pvalue) {
 
 /*
  * @brief set analog value to dac channel
- * @note Currently, only the internal adc connections can be used
+ * @note Currently, only the internal adc connections can be used, in order to use the external 
+ * connections, the dac has to be configured for buffered output, and the alternate functions of
+ * the pins need to be activated
  * @param value is the right aligned 12 bit dac value
  * @param pin either MYADC_PIN_DAC1 or MYADC_PIN_DAC2 depending on the desired channel
  */

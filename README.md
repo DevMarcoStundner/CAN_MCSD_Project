@@ -64,8 +64,17 @@ In contrast to the above, it allows for multiple simultaneous timers (set via
 `OS_MAX_TIMERS`), but has a fairly low accuracy (+- 1ms) as it uses the sytick 
 timer.
 
+# Utility functions
+## ADC/DAC performace
+The ADC and DAC work within +- 3 LSB from 800 to 4000 counts, below 800 the DAC 
+saturates and does not reach zero.
+
 # Serial Console
 ## Format specification
+## Implemented commands
+- h -> returns help
+- a -> adds arg 1 and 2 as integers
+- m -> set dac to arg 1 value, return dac measurement
 
 ## Implementation notes
 For both RX and TX, DMA instance 1 will be used.

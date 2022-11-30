@@ -82,7 +82,7 @@ static uint8_t ser_measadc(char * outbuf, char * const cmdbuf) {
   }
   uint16_t ret = 0;
   uint16_t dacval = atoi(cmdbuf);
-  //ret += dac_setval(dacval, MYADC_PIN_DAC1);
+  ret += mydac_setval(dacval, MYADC_PIN_DAC1);
   uint16_t adcval = 100;
   ret += myadc_getval(&adcval);
   snprintf(outbuf, SER_MAX_RESPLEN, "ADC: %d", adcval);
@@ -111,8 +111,7 @@ int main()
   ser_addcmd('h', serhelp);
   ser_addcmd('m', ser_measadc);
 
-  myadc_configure(MYADC_PIN_A0);
-  //myadc_configure(MYADC_PIN_DAC1);
+  myadc_configure(MYADC_PIN_DAC1);
 
   os_setcallback(controlloop);
 
