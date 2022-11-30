@@ -10,6 +10,7 @@
 #include "libcmsis/system_stm32l4xx.h"
 #include "libll/stm32l4xx_ll_utils.h"
 #include "os/os.h"
+#include "utils/adc.h"
 
 // Create references to symbols defined in the linker script 
 extern unsigned int __data_start__;	
@@ -211,6 +212,7 @@ void startup()
 
   //__libc_init_array();
   os_init();
+  myadc_init();
 
 	// Calling the main function
 	main();

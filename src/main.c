@@ -6,6 +6,7 @@
 
 #include "os/os.h"
 #include "utils/serial.h"
+#include "utils/adc.h"
 #include "clickshield/clickshield.h"
 
 #include <stdlib.h>
@@ -74,6 +75,19 @@ static uint8_t seradd(char * outbuf, char * const cmdbuf) {
   return 0;
 }
 
+static uint8_t ser_measadc(char * outbuf, char * const cmdbuf) {
+  if (strlen(cmdbuf) < 1) {
+    snprintf(outbuf, SER_MAX_RESPLEN, "Missing Argument error");
+    return 1;
+  }
+  uint16_t dacval = atoi(cmdbuf);
+  mydac_setval(dacval, MYADC_PIN_DAC1);
+  uint16_t adcval = 100;
+  uint8_t ret = myadc_getval(&adcval);
+  snprintf(outbuf, SER_MAX_RESPLEN, "ADC: %d", adcval);
+  return ret;
+}
+
 /**
  * @brief callback to demonstrate the os_timeout functionality
  */
@@ -94,6 +108,10 @@ int main()
   ser_init();
   ser_addcmd('a', seradd);
   ser_addcmd('h', serhelp);
+  ser_addcmd('m', ser_measadc);
+
+  //myadc_configure(MYADC_PIN_VREF);
+  myadc_configure(MYADC_PIN_DAC1);
 
   os_setcallback(controlloop);
 
