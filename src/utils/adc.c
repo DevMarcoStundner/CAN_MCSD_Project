@@ -13,21 +13,21 @@ const myadc_sources_TypeDef myadc_sources[MYADC_MAX_PINS] = {
   {LL_GPIO_PIN_0, LL_ADC_CHANNEL_5}, // ADC_PIN_A0
   {LL_GPIO_PIN_1, LL_ADC_CHANNEL_6}, // ADC_PIN_A1
   {LL_GPIO_PIN_3, LL_ADC_CHANNEL_8}, // ADC_PIN_A2
-  {LL_GPIO_PIN_4, LL_ADC_CHANNEL_9}, // ADC_PIN_A3
-  {LL_GPIO_PIN_5, LL_ADC_CHANNEL_10}, // ADC_PIN_A4
+  {LL_GPIO_PIN_4, LL_ADC_CHANNEL_9}, // ADC_PIN_A3, DAC_OUT1
+  {LL_GPIO_PIN_5, LL_ADC_CHANNEL_10}, // ADC_PIN_A4, DAC_OUT2
   {LL_GPIO_PIN_6, LL_ADC_CHANNEL_11}, // ADC_PIN_A5
   {LL_GPIO_PIN_7, LL_ADC_CHANNEL_12}, // ADC_PIN_A6
   {LL_GPIO_PIN_2, LL_ADC_CHANNEL_7}, // ADC_PIN_A7
-  //{LL_GPIO_PIN_0, LL_ADC_CHANNEL_17}, // ADC_PIN_DAC1
-  //{LL_GPIO_PIN_0, LL_ADC_CHANNEL_18}, // ADC_PIN_DAC2
   {LL_DAC_CHANNEL_1, LL_ADC_CHANNEL_DAC1CH1}, // ADC_PIN_DAC1
   {LL_DAC_CHANNEL_2, LL_ADC_CHANNEL_DAC1CH2}, // ADC_PIN_DAC2
-  {LL_GPIO_PIN_0, LL_ADC_CHANNEL_VREFINT}, // ADC_PIN_DAC2
+  {0, LL_ADC_CHANNEL_VREFINT}, // ADC_PIN_VREF
 };
 
-void myadc_init() {
-}
-
+/*
+ * @brief initialize adc and optionally dac/gpio
+ * @param srcpin one from MYADC_PIN_x, selects the input channel to configure
+ * @return 0 on success, 1 otherwise
+ */
 uint8_t myadc_configure(myadc_sources_EnumDef srcpin) {
   ErrorStatus err = ERROR;
   if (srcpin < MYADC_PIN_DAC1) {
@@ -89,6 +89,10 @@ uint8_t myadc_configure(myadc_sources_EnumDef srcpin) {
   return 0;
 }
 
+/*
+ * @brief read value from configured adc channel
+ * @param pvalue is a pointer to the value destination
+ */
 uint8_t myadc_getval(uint16_t * pvalue) {
   // enable adc
   LL_ADC_ClearFlag_ADRDY(ADC1);
@@ -109,6 +113,12 @@ uint8_t myadc_getval(uint16_t * pvalue) {
   return 0;
 }
 
+/*
+ * @brief set analog value to dac channel
+ * @note Currently, only the internal adc connections can be used
+ * @param value is the right aligned 12 bit dac value
+ * @param pin either MYADC_PIN_DAC1 or MYADC_PIN_DAC2 depending on the desired channel
+ */
 uint8_t mydac_setval(uint16_t value, myadc_sources_EnumDef pin) {
   if (pin != MYADC_PIN_DAC1 && pin != MYADC_PIN_DAC2) {
     return 1;

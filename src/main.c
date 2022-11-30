@@ -80,10 +80,11 @@ static uint8_t ser_measadc(char * outbuf, char * const cmdbuf) {
     snprintf(outbuf, SER_MAX_RESPLEN, "Missing Argument error");
     return 1;
   }
+  uint16_t ret = 0;
   uint16_t dacval = atoi(cmdbuf);
-  mydac_setval(dacval, MYADC_PIN_DAC1);
+  //ret += dac_setval(dacval, MYADC_PIN_DAC1);
   uint16_t adcval = 100;
-  uint8_t ret = myadc_getval(&adcval);
+  ret += myadc_getval(&adcval);
   snprintf(outbuf, SER_MAX_RESPLEN, "ADC: %d", adcval);
   return ret;
 }
@@ -110,8 +111,8 @@ int main()
   ser_addcmd('h', serhelp);
   ser_addcmd('m', ser_measadc);
 
-  //myadc_configure(MYADC_PIN_VREF);
-  myadc_configure(MYADC_PIN_DAC1);
+  myadc_configure(MYADC_PIN_A0);
+  //myadc_configure(MYADC_PIN_DAC1);
 
   os_setcallback(controlloop);
 

@@ -19,7 +19,8 @@ typedef enum {
 	MYADC_PIN_VREF=10,
 } myadc_sources_EnumDef;
 
-void myadc_init();
 uint8_t myadc_configure(myadc_sources_EnumDef srcpin);
+uint8_t myadc_getval(uint16_t * pvalue);
+uint8_t mydac_setval(uint16_t value, myadc_sources_EnumDef pin);
 
 #endif
