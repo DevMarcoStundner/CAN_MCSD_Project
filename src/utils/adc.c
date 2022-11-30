@@ -70,9 +70,8 @@ uint8_t myadc_configure(myadc_sources_EnumDef srcpin) {
   err = LL_ADC_Init(ADC1, &adc_init);
   if (err != SUCCESS) return 1;
 
-  // do calibration ?
+  // do calibration
   LL_ADC_StartCalibration(ADC1, LL_ADC_SINGLE_ENDED);
-  uint32_t adcal = LL_ADC_IsCalibrationOnGoing(ADC1);
   while (LL_ADC_IsCalibrationOnGoing(ADC1));
   for (int i=LL_ADC_DELAY_CALIB_ENABLE_ADC_CYCLES; i>0; i--) {
     __NOP();

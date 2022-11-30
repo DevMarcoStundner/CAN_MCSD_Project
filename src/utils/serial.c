@@ -43,7 +43,7 @@ static void transmit_response(ser_buf_TypeDef *buffer);
 static ser_buf_TypeDef * get_free_buf();
 static ser_buf_TypeDef * get_first_buf(ser_buf_TypeDef * startbuf);
 static ser_buf_TypeDef * get_last_buf(ser_buf_TypeDef * startbuf);
-static ser_buf_TypeDef * get_prev_buf(ser_buf_TypeDef * startbuf);
+static ser_buf_TypeDef * get_prev_buf(ser_buf_TypeDef * startbuf) __attribute__((unused));
 
 void USART2_IRQHandler(void) {
   // if char match
@@ -161,14 +161,10 @@ void ser_init() {
   // config baud rate
   usart_init.BaudRate = 115200;
   usart_init.TransferDirection = LL_USART_DIRECTION_TX_RX;
-  ErrorStatus ret = LL_USART_Init(SER_UARTPERIPH, &usart_init);
-  //LL_USART_SetRXPinLevel(SER_UARTPERIPH, LL_USART_RXPIN_LEVEL_INVERTED);
-  //LL_USART_SetTXPinLevel(SER_UARTPERIPH, LL_USART_TXPIN_LEVEL_INVERTED);
-  //LL_USART_ClearFlag_TC(SER_UARTPERIPH);
+  LL_USART_Init(SER_UARTPERIPH, &usart_init);
   LL_USART_EnableDMAReq_RX(SER_UARTPERIPH);
   LL_USART_EnableDMAReq_TX(SER_UARTPERIPH);
   // config interrupts
-  //LL_USART_DisableIT_TC(SER_UARTPERIPH);
   LL_USART_EnableIT_CM(SER_UARTPERIPH);
   LL_USART_EnableIT_ERROR(SER_UARTPERIPH);
   NVIC_EnableIRQ(USART2_IRQn);
@@ -317,7 +313,7 @@ static void handle_command(ser_buf_TypeDef * buffer) {
         uint8_t retval = commands[i].cb(scratchpad, buffer->buf+3);
         if (retval) {
           if (strlen(scratchpad) == 0) {
-            snprintf(buffer->buf, SER_CMDBUFLEN, "NACK\n#?,General error\n", scratchpad);
+            snprintf(buffer->buf, SER_CMDBUFLEN, "NACK\n#?,General error\n");
           } else {
             snprintf(buffer->buf, SER_CMDBUFLEN, "NACK\n#?,%s\n", scratchpad);
           }

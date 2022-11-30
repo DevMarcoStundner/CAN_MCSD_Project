@@ -13,8 +13,8 @@
 #include <string.h>
 #include <stdio.h>
 
-static volatile CS_RGB_TypeDef rgbcolor = {0,0,10};
-static const CS_RGB_TypeDef patterns[] = {
+static CS_RGB_TypeDef rgbcolor = {0,0,10};
+static CS_RGB_TypeDef patterns[] = {
   {0,0,0},
   {255,0,0},
   {0,255,0},
