@@ -13,49 +13,64 @@
 #include <string.h>
 #include <stdio.h>
 
-static CS_RGB_TypeDef rgbcolor = {0,0,10};
+static CS_RGB_TypeDef rgbcolor = {255,0,0};
 static CS_RGB_TypeDef patterns[] = {
   {0,0,0},
   {255,0,0},
   {0,255,0},
   {0,0,255},
+  {255,255,255},
 };
 static const uint8_t patterncnt = sizeof(patterns)/sizeof(CS_RGB_TypeDef);
+static bool tim_elapsed = false;
+static unsigned int btncnt = 0;
+
+static void controlloop(uint32_t looptime);
+static void btnhandler(CS_BTN_Action_TypeDef value);
+
+static uint8_t serhelp(char * outbuf, char * const cmdbuf __attribute__((unused)));
+static uint8_t seradd(char * outbuf, char * const cmdbuf);
+static uint8_t ser_measadc(char * outbuf, char * const cmdbuf);
+static uint8_t ser_getbtnpresses(char * outbuf, char * const cmdbuf __attribute__((unused)));
 
 /**
  * @brief control loop callback for os tick
  * @params looptime contains the tick count value
  */
 static void controlloop(uint32_t looptime) {
-  //LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_3);
+  LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_3);
   CS_LoopHandler(looptime);
-  //LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_3);
   ser_handle();
+  LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_3);
 }
 
 /**
  * @brief callback for btn event from clickshield
  * @params value (contains the current event)
  */
-void btnhandler(CS_BTN_Action_TypeDef value) {
-  static uint8_t patindex = 0;
+static void btnhandler(CS_BTN_Action_TypeDef value) {
   switch(value) {
     case CS_BTN_Action_Click:
-      patindex++;
-      if(patindex < patterncnt) break;
-      __attribute__ ((fallthrough));
+      btncnt++;
+      break;
     case CS_BTN_Action_Longpress:
-      patindex=0;
+      btncnt=0;
       break;
   }
-  CS_RGB_SetDim(patterns[patindex]);
 }
 
+/*
+ * @brief serial function which returns a helpful message
+ */
 static uint8_t serhelp(char * outbuf, char * const cmdbuf __attribute__((unused))) {
   sprintf(outbuf, "Command format: #<c>,arg,arg\\n  c->command");
   return 0;
 }
 
+/*
+ * @brief serial function which adds 2 numbers
+ * @note both serial arguments must be non-zero
+ */
 static uint8_t seradd(char * outbuf, char * const cmdbuf) {
   int a=0,b=0;
   a = atoi(cmdbuf);
@@ -75,6 +90,9 @@ static uint8_t seradd(char * outbuf, char * const cmdbuf) {
   return 0;
 }
 
+/*
+ * @brief serial function which sets a dac value(arg 1) and prints the measured adc value
+ */
 static uint8_t ser_measadc(char * outbuf, char * const cmdbuf) {
   if (strlen(cmdbuf) < 1) {
     snprintf(outbuf, SER_MAX_RESPLEN, "Missing Argument error");
@@ -89,11 +107,19 @@ static uint8_t ser_measadc(char * outbuf, char * const cmdbuf) {
   return ret;
 }
 
+/*
+ * @brief serial function which prints the button fast presses since last long press
+ */
+static uint8_t ser_getbtnpresses(char * outbuf, char * const cmdbuf __attribute__((unused))) {
+  snprintf(outbuf, SER_MAX_RESPLEN, "Button pressed %u times.", btncnt);
+  return 0;
+}
+
 /**
  * @brief callback to demonstrate the os_timeout functionality
  */
 void timeouthandler() {
-  LL_GPIO_TogglePin(GPIOB, LL_GPIO_PIN_3);
+  tim_elapsed = true;
 }
 
 int main()
@@ -106,22 +132,27 @@ int main()
   CS_BTN_SetCallback(btnhandler);
   CS_RGB_SetDim(rgbcolor);
 
-  ser_init();
-  ser_addcmd('a', seradd);
-  ser_addcmd('h', serhelp);
-  ser_addcmd('m', ser_measadc);
-
   myadc_configure(MYADC_PIN_DAC1);
 
+  ser_init();
+  ser_addcmd('h', serhelp);
+  ser_addcmd('a', seradd);
+  ser_addcmd('m', ser_measadc);
+  ser_addcmd('b', ser_getbtnpresses);
+
+  // enable event loop
   os_setcallback(controlloop);
 
-  // light the board diode for 3 seconds
+  // wait for 3 seconds after board reset
   os_timeout(3e9, timeouthandler);
+  while (!tim_elapsed);
 
+  uint8_t pat = 0;
 	while (1) {
-    // toggle the board diode with a period of 500ms
+    // switch the rgb diode with a period of 250ms
+    if (pat >= patterncnt) pat = 0; 
+    CS_RGB_SetDim(patterns[pat++]);
     os_timeout(250e6, NULL);
-    LL_GPIO_TogglePin(GPIOB, LL_GPIO_PIN_3);
   }
 	return 0;
 }

@@ -127,6 +127,9 @@ void DMA1_Channel6_IRQHandler(void){
     // restart dma on same buffer
 }
 
+/*
+ * @brief handler function to be called periodically by the system event loop
+ */
 void ser_handle() {
   // no command/response is waited on
   if (cur_rx_buf != NULL) {
@@ -137,6 +140,9 @@ void ser_handle() {
   }
 }
 
+/*
+ * @brief initializes the USART, DMA and static variables
+ */
 void ser_init() {
   for (int i=0; i<SER_MAX_COMMANDS; i++) {
     commands[i].cmd = '\0';
@@ -229,6 +235,10 @@ uint8_t ser_addcmd(char cmd, uint8_t (*func)(char*,char*)) {
   return 1;
 }
 
+/*
+ * @brief get the address of a free buffer
+ * @return NULL when no buffer is available, the buffer address otherwise
+ */
 static ser_buf_TypeDef * get_free_buf() {
   for (int i=0; i<SER_CMDBUFCNT; i++) {
     ser_buf_TypeDef * buf = &cmd_buffers[i];
@@ -239,6 +249,11 @@ static ser_buf_TypeDef * get_free_buf() {
   return NULL;
 }
 
+/*
+ * @brief get the first buffer from the linked chain
+ * @param startbuf is the address of the buffer with which to begin
+ * @return NULL when startbuf is the first buffer in the chain, the found address otherwise
+ */
 static ser_buf_TypeDef * get_first_buf(ser_buf_TypeDef * startbuf) {
   ser_buf_TypeDef * buf = startbuf;
   ser_buf_TypeDef * tmp = NULL;
@@ -255,6 +270,11 @@ static ser_buf_TypeDef * get_first_buf(ser_buf_TypeDef * startbuf) {
   return (startbuf == buf)?NULL:buf;
 }
 
+/*
+ * @brief get the last buffer from the linked chain
+ * @param startbuf is the address of the buffer with which to begin
+ * @return NULL when startbuf is the last buffer in the chain, the found address otherwise
+ */
 static ser_buf_TypeDef * get_last_buf(ser_buf_TypeDef * startbuf) {
   ser_buf_TypeDef * buf = startbuf;
   int i=0;
@@ -269,6 +289,11 @@ static ser_buf_TypeDef * get_last_buf(ser_buf_TypeDef * startbuf) {
   return buf;
 }
 
+/*
+ * @brief get the buffer before the current from the linked chain
+ * @param startbuf is the address of the buffer with which to begin
+ * @return NULL when startbuf is the first buffer in the chain, the found address otherwise
+ */
 static ser_buf_TypeDef * get_prev_buf(ser_buf_TypeDef * startbuf) {
   ser_buf_TypeDef * tmp = NULL;
   for (int i=0; i<SER_CMDBUFCNT; i++) {
@@ -280,6 +305,10 @@ static ser_buf_TypeDef * get_prev_buf(ser_buf_TypeDef * startbuf) {
   return tmp;
 }
 
+/* @brief enable buffer for transmission
+ * @note adds the buffer to the tx chain, if no chain exists also starts the transmission
+ * @param buffer address of the buffer to be transmitted
+ */
 static void transmit_response(ser_buf_TypeDef *buffer) {
   if (buffer != NULL) {
     buffer->used = true;
@@ -296,14 +325,16 @@ static void transmit_response(ser_buf_TypeDef *buffer) {
   }
 }
 
+/* @brief handle fully received command, and trigger corresponding response
+ * @param buffer address of the receive buffer to be handled
+ */
 static void handle_command(ser_buf_TypeDef * buffer) {
   char scratchpad[SER_MAX_RESPLEN+1];
   scratchpad[0] = '\0';
   scratchpad[SER_MAX_RESPLEN] = '\0';
   buffer->next_buffer = NULL;
-  // check for sof
-  // check for single eof
   char * eos = strchr(buffer->buf,'\n');
+
   if ((buffer->buf[0] == '#') && (eos != NULL)) {
     *eos = '\0';
     for (int i=0; i<SER_MAX_COMMANDS; i++) {
@@ -329,6 +360,5 @@ static void handle_command(ser_buf_TypeDef * buffer) {
   } else {
     snprintf(buffer->buf, SER_CMDBUFLEN, "NACK\n#?,Invalid Command Format\n");
   }
-  // send response
   transmit_response(buffer);
 }

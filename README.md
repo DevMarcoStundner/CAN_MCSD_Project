@@ -74,7 +74,8 @@ saturates and does not reach zero.
 ## Implemented commands
 - h -> returns help
 - a -> adds arg 1 and 2 as integers
-- m -> set dac to arg 1 value, return dac measurement
+- m -> set dac to arg 1 value, return adc measurement
+- b -> return button short presses. Value is reset via a longpress
 
 ## Implementation notes
 For both RX and TX, DMA instance 1 will be used.
