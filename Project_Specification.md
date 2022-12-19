@@ -4,7 +4,7 @@
 
 - The communication should be accomplished with two CAN bus transceivers.
 
-- The output will be transmitted to the PC over UART.
+- The input to the microcontroller and the output to the PC will be transmitted over UART.
 
 - The microcontroller should check for Errors with the following
     
