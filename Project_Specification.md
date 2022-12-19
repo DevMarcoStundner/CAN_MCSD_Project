@@ -14,4 +14,4 @@
     - Monitoring
     - Bit-stuffing
  
- <img src="./Blockschaltbild_CAN.jpeg">
+ <img src="./Blockschaltbild_CAN.jpg">
