@@ -13,3 +13,5 @@
     - ACK-Error
     - Monitoring
     - Bit-stuffing
+ 
+ <img src="./Blockschaltbild_CAN.jpeg">
