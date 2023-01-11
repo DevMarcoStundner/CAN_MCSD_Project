@@ -91,5 +91,30 @@ The makefile contains the following commands:
 ## Serial Console
 Because of the whack specification, minicom does not handle the crlf lf etc 
 translation correctly. Therefore, it is advisable to use the program *picocom* 
-with the command `picocom -b 9600 --parity n --omap crlf --imap lfcrlf --echo 
+with the command `picocom -b 115200 --parity n --omap crlf --imap lfcrlf --echo
 /dev/ttyUSB0`.
+
+# Project
+## Click shield connections
+Rotary encoder:
+- A - PA1 - TIM2CH1 - AF1
+- B - PA5 - TIM2CH2 - AF1
+- BUTTON - PA4 - Pullup required
+- RESET - PC15 - Active Low
+- MOSI - PB5
+- MISO - PB4
+- SCK - PB3
+- CS/LATCH - PA6
+
+SPI1 -> AF5, SPI3 -> AF6, Shift Reg max frequency 25MHz
+
+Stepper Motor:
+- STEP - PB1 - TIM1CH3N
+- DIR - PB0 - TIM1CH2N
+- MS1 - PA0
+- MS2 - PC14
+- EN - PA3 - Not Connected
+
+CAN Shield:
+- RX - PA11 - AF9
+- TX - PA12 - AF9
