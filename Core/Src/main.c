@@ -59,11 +59,6 @@ static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_CAN1_Init(void);
 /* USER CODE BEGIN PFP */
-CAN_RxHeaderTypeDef 	CanRx;
-uint8_t RxData[8];								// Receive the data area
-uint8_t TxData[8] = {'1','2','3'};				// Send data area
-
-
 
 /* USER CODE END PFP */
 
@@ -71,8 +66,8 @@ uint8_t TxData[8] = {'1','2','3'};				// Send data area
 /* USER CODE BEGIN 0 */
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)// Packet receive interrupt
 {
-		HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &CanRx, RxData);
-		Flag_Rx = 1;
+	HAL_CAN_DeactivateNotification(&hcan1,CAN_IT_RX_FIFO0_MSG_PENDING);
+	Flag_Rx = 1;
 }
 /* USER CODE END 0 */
 
@@ -86,13 +81,10 @@ int main(void)
 	HAL_StatusTypeDef       STATE;
 	CAN_FilterTypeDef 		CAN_Filter;
 	CAN_TxHeaderTypeDef		CanTx;
-
-
-
+	CAN_RxHeaderTypeDef 	CanRx;
+	uint8_t RxData[8];								// Receive the data area
+	uint8_t TxData[8] = {'1','2','3'};				// Send data area
 	uint32_t pTxMailbox = 0;						// Send a mailbox box
-
-	uint8_t nack[] = {'N','A','C','K','\n'};
-	uint8_t ack[] = {'A','C','K','\n'};
 
   /* USER CODE END 1 */
 
@@ -118,57 +110,12 @@ int main(void)
   MX_CAN1_Init();
   /* USER CODE BEGIN 2 */
 
-  	  CanTx.StdId = 0x00;
- 	  CanTx.ExtId = 0x00;
- 	  CanTx.IDE = CAN_ID_STD;
- 	  CanTx.RTR = CAN_RTR_DATA;
-  	  CanTx.DLC = 3;											//Data length
-//Data Frame
- 	  CanTx.TransmitGlobalTime = DISABLE;									// Timestamp
-
- 	  CanRx.DLC = sizeof(CanRx);
- 	  CanRx.StdId = 0x00;
- 	  CanRx.ExtId = 0x00;
-	  CanRx.IDE = CAN_ID_STD;
-	  CanRx.RTR = CAN_RTR_DATA;												//Data Frame
-	  CanRx.Timestamp = DISABLE;											// Timestamp
-	  CanRx.FilterMatchIndex = 0x00;
-
- 	  CAN_Filter.FilterMode = CAN_FILTERMODE_IDMASK;
- 	  CAN_Filter.FilterFIFOAssignment = CAN_FILTER_FIFO0;
- 	  CAN_Filter.FilterBank = 0;
- 	  CAN_Filter.FilterScale = CAN_FILTERSCALE_32BIT;
- 	  CAN_Filter.FilterIdHigh = 0x000;
- 	  CAN_Filter.FilterIdLow = 0x000;
- 	  CAN_Filter.FilterMaskIdHigh = 0x000;
- 	  CAN_Filter.FilterMaskIdLow = 0x000;
- 	  CAN_Filter.SlaveStartFilterBank = 14;
- 	  CAN_Filter.FilterActivation = ENABLE;
-
- 	  if(HAL_CAN_ConfigFilter(&hcan1, &CAN_Filter) != HAL_OK)
-	  {
- 		 return HAL_ERROR;
-	  }
-
-	  if(HAL_CAN_Start(&hcan1) != HAL_OK)
-	  {
-		  return HAL_ERROR;
-	  }
-
-	  if(HAL_CAN_ActivateNotification(&hcan1,CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK) // Activate CAN_IT_RX_FIFO0_MSG_PENDING Interrupt
-	  {
-		return HAL_ERROR;
-	  }
-	  //CAN1->MCR |= 1<<16;
-
-
-  //_can_init(hcan1, CAN_Filter, CanTx);
+  _can_init(hcan1, CAN_Filter, CanTx);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-	   uint8_t info[] = "Send\n";
-	   uint8_t count = 0;
+
   while (1)
   {
     /* USER CODE END WHILE */
@@ -178,28 +125,11 @@ int main(void)
 	  if(Flag_Rx == 1)
 	  {
 		  Flag_Rx = 0;
+		  HAL_CAN_ActivateNotification(&hcan1,CAN_IT_RX_FIFO0_MSG_PENDING);
 		  _uart_transmit(huart2, RxData, sizeof(TxData), TRANSMIT_TIMEOUT);
 	  }
 
-	  //STATE = HAL_CAN_AddTxMessage(&hcan1, &CanTx, TxData, &pTxMailbox);
-	  TxData[0] = count;
-	  STATE = HAL_CAN_AddTxMessage(&hcan1, &CanTx, TxData, &pTxMailbox);
-	  count++;
 
-
-	  if(STATE == HAL_CAN_ERROR_PARAM)
-	  {
-		  _uart_transmit(huart2, ack, sizeof(ack), TRANSMIT_TIMEOUT);
-	  }
-
-	  if(STATE == HAL_CAN_ERROR_NOT_INITIALIZED)
-	  {
-		  _uart_transmit(huart2, nack, sizeof(nack), TRANSMIT_TIMEOUT);
-	  }
-
-
-
-	  _uart_transmit(huart2, info, sizeof(info), TRANSMIT_TIMEOUT);
 
 	  HAL_Delay(200);
   }
