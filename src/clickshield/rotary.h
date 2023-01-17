@@ -9,5 +9,6 @@ void cs_rot_reset();
 int32_t cs_rot_getPos();
 int32_t cs_rot_checkOverflow();
 int32_t cs_rot_getDiff();
+void cs_rot_setIndicator(uint16_t leds);
 
 #endif

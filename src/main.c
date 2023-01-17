@@ -8,6 +8,7 @@
 #include "utils/serial.h"
 #include "utils/adc.h"
 #include "clickshield/clickshield.h"
+#include "clickshield/rotary.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -38,10 +39,10 @@ static uint8_t ser_getbtnpresses(char * outbuf, char * const cmdbuf __attribute_
  * @params looptime contains the tick count value
  */
 static void controlloop(uint32_t looptime) {
-  LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_3);
+  //LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_3);
   CS_LoopHandler(looptime);
   ser_handle();
-  LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_3);
+  //LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_3);
 }
 
 /**
@@ -124,15 +125,14 @@ void timeouthandler() {
 
 int main()
 {
-  LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOB);
-  LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_3, LL_GPIO_MODE_OUTPUT);
-  LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_3);
+  //LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOB);
+  //LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_3, LL_GPIO_MODE_OUTPUT);
+  //LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_3);
 
-  CS_Init(CS_INIT_BTN | CS_INIT_RGB | CS_INIT_DIM);
+  CS_Init(CS_INIT_BTN);
   CS_BTN_SetCallback(btnhandler);
-  CS_RGB_SetDim(rgbcolor);
 
-  myadc_configure(MYADC_PIN_DAC1);
+  //myadc_configure(MYADC_PIN_DAC1);
 
   ser_init();
   ser_addcmd('h', serhelp);
@@ -140,19 +140,26 @@ int main()
   ser_addcmd('m', ser_measadc);
   ser_addcmd('b', ser_getbtnpresses);
 
+  cs_rot_init();
+
   // enable event loop
   os_setcallback(controlloop);
 
   // wait for 3 seconds after board reset
-  os_timeout(3e9, timeouthandler);
-  while (!tim_elapsed);
+  //os_timeout(3e9, timeouthandler);
+  //while (!tim_elapsed);
 
   uint8_t pat = 0;
+  uint16_t ledpos = 0;
 	while (1) {
-    // switch the rgb diode with a period of 250ms
-    if (pat >= patterncnt) pat = 0; 
-    CS_RGB_SetDim(patterns[pat++]);
-    os_timeout(250e6, NULL);
+    if (ledpos == 0) {
+      ledpos = 1;
+    } else {
+      ledpos <<= 1;
+    }
+    cs_rot_setIndicator(ledpos);
+
+    os_timeout(10e6, NULL);
   }
 	return 0;
 }
