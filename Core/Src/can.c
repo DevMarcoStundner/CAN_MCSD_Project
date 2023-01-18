@@ -5,29 +5,11 @@
  *      Author: marco
  */
 #include "main.h"
+#include "can.h"
 
 
-CAN_Status _can_init(CAN_HandleTypeDef hcan, CAN_FilterTypeDef CAN_Filter, CAN_TxHeaderTypeDef CanTx)
+CAN_Status _can_init(CAN_HandleTypeDef hcan, CAN_FilterTypeDef CAN_Filter)
 {
-
-	CanTx.StdId 				= 0x00;
-	CanTx.ExtId 				= 0x00;
-	CanTx.IDE 					= CAN_ID_STD;
-	CanTx.RTR 					= CAN_RTR_DATA;
-	CanTx.DLC 					= 8;
-	CanTx.TransmitGlobalTime	= DISABLE;
-
-
-	CAN_Filter.FilterMode 					= CAN_FILTERMODE_IDMASK;
-	CAN_Filter.FilterFIFOAssignment 		= CAN_FILTER_FIFO0;
-	CAN_Filter.FilterBank 					= 0;
-	CAN_Filter.FilterScale 					= CAN_FILTERSCALE_32BIT;
-	CAN_Filter.FilterIdHigh 				= 0x000;
-	CAN_Filter.FilterIdLow 					= 0x000;
-	CAN_Filter.FilterMaskIdHigh				= 0x000;
-	CAN_Filter.FilterMaskIdLow 				= 0x000;
-	CAN_Filter.SlaveStartFilterBank 		= 14;
-	CAN_Filter.FilterActivation 			= ENABLE;
 
 	if(HAL_CAN_ConfigFilter(&hcan, &CAN_Filter) != HAL_OK)
 	    return CAN_FILTER_ERROR;
@@ -41,10 +23,10 @@ CAN_Status _can_init(CAN_HandleTypeDef hcan, CAN_FilterTypeDef CAN_Filter, CAN_T
 	return CAN_OK;
 }
 
-CAN_Status _can_send_pkg(CAN_HandleTypeDef *hcan, const CAN_TxHeaderTypeDef *pHeader, const uint8_t aData[], uint32_t *pTxMailbox)
+CAN_Status _can_send_pkg(CAN_HandleTypeDef hcan, const CAN_TxHeaderTypeDef pHeader, const uint8_t aData[], uint32_t pTxMailbox)
 {
 
-	if(HAL_CAN_GetTxMailboxesFreeLevel(&hcan) > 3)
+	if(_can_mailbox_fill(hcan) == 0)
 		return CAN_MAILBOX_ERROR;
 
 	if(HAL_CAN_AddTxMessage(&hcan, &pHeader, aData, &pTxMailbox) != HAL_OK)
@@ -53,7 +35,7 @@ CAN_Status _can_send_pkg(CAN_HandleTypeDef *hcan, const CAN_TxHeaderTypeDef *pHe
 	return CAN_OK;
 }
 
-CAN_Status _can_receive_pkg(CAN_HandleTypeDef *hcan, uint32_t RxFifo, CAN_RxHeaderTypeDef *pHeader, uint8_t aData[], ID id)
+CAN_Status _can_receive_pkg(CAN_HandleTypeDef hcan, uint32_t RxFifo, CAN_RxHeaderTypeDef pHeader, uint8_t aData[], ID id)
 {
 	if(HAL_CAN_GetRxMessage(&hcan, RxFifo, &pHeader, aData) != HAL_OK)
 		return CAN_MSG_ERROR;
@@ -62,6 +44,41 @@ CAN_Status _can_receive_pkg(CAN_HandleTypeDef *hcan, uint32_t RxFifo, CAN_RxHead
 	 */
 	return CAN_OK;
 }
+
+uint32_t _can_mailbox_fill(CAN_HandleTypeDef hcan)
+{
+
+	uint32_t fill = HAL_CAN_GetTxMailboxesFreeLevel(&hcan);
+	return fill;
+}
+
+
+CAN_Status _can_error_check(const CAN_HandleTypeDef *hcan)
+{
+
+	switch(hcan->ErrorCode)
+		  {
+			case CAN_OK:
+					return CAN_OK;
+					break;
+			case CAN_EPV_ERROR: 						//ERROR Passive
+					return CAN_EPV_ERROR;
+					break;
+			case CAN_BOF_ERROR:							//ERROR Bus-off
+					return CAN_BOF_ERROR;
+					break;
+			case CAN_STF_ERROR:							//ERROR Stuff
+					return CAN_STF_ERROR;
+					break;
+			case CAN_FOR_ERROR:							//ERROR Form
+					return CAN_FOR_ERROR;
+					break;
+			default:
+				return CAN_ERROR;						// another ERROR occured that is not implemented
+				break;
+		  }
+}
+
 
 /**
   * brief  Motor-Pkg callback.

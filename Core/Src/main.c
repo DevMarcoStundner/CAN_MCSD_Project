@@ -32,9 +32,6 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define TRANSMIT_TIMEOUT 100
-#define RECEIVE_TIMEOUT 500
-
 
 
 /* USER CODE END PD */
@@ -78,13 +75,13 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)// Packet receive
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	HAL_StatusTypeDef       STATE;
 	CAN_FilterTypeDef 		CAN_Filter;
 	CAN_TxHeaderTypeDef		CanTx;
 	CAN_RxHeaderTypeDef 	CanRx;
 	uint8_t RxData[8];								// Receive the data area
 	uint8_t TxData[8] = {'1','2','3'};				// Send data area
 	uint32_t pTxMailbox = 0;						// Send a mailbox box
+	uint32_t Mailbox_lvl = 0;
 
   /* USER CODE END 1 */
 
@@ -110,7 +107,27 @@ int main(void)
   MX_CAN1_Init();
   /* USER CODE BEGIN 2 */
 
-  _can_init(hcan1, CAN_Filter, CanTx);
+
+
+  	CanTx.StdId 				= 0x00;
+  	CanTx.ExtId 				= 0x00;
+  	CanTx.IDE 					= CAN_ID_STD;
+  	CanTx.RTR 					= CAN_RTR_DATA;
+  	CanTx.DLC 					= 8;
+  	CanTx.TransmitGlobalTime	= DISABLE;
+
+  	CAN_Filter.FilterMode 					= CAN_FILTERMODE_IDMASK;
+  	CAN_Filter.FilterFIFOAssignment 		= CAN_FILTER_FIFO0;
+  	CAN_Filter.FilterBank 					= 0;
+  	CAN_Filter.FilterScale 					= CAN_FILTERSCALE_32BIT;
+  	CAN_Filter.FilterIdHigh 				= 0x000;
+  	CAN_Filter.FilterIdLow 					= 0x000;
+  	CAN_Filter.FilterMaskIdHigh				= 0x000;
+  	CAN_Filter.FilterMaskIdLow 				= 0x000;
+  	CAN_Filter.SlaveStartFilterBank 		= 14;
+  	CAN_Filter.FilterActivation 			= ENABLE;
+
+  	_can_init(hcan1, CAN_Filter);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -121,15 +138,24 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  if(_can_error_check(&hcan1) != CAN_OK)
+	  {
+		  /*
+		   * Überlegen was man hier sinnvoll machen kann
+		   */
+	  }
+
 
 	  if(Flag_Rx == 1)
 	  {
+		  _can_receive_pkg(hcan1, CAN_FILTER_FIFO0, CanRx, RxData, MOTOR);
 		  Flag_Rx = 0;
 		  HAL_CAN_ActivateNotification(&hcan1,CAN_IT_RX_FIFO0_MSG_PENDING);
 		  _uart_transmit(huart2, RxData, sizeof(TxData), TRANSMIT_TIMEOUT);
 	  }
 
 
+	  _can_send_pkg(hcan1, CanTx, TxData, pTxMailbox);
 
 	  HAL_Delay(200);
   }

@@ -9,7 +9,7 @@
 #define INC_UART_H_
 
 
-
+#define TRANSMIT_TIMEOUT 100
 
 /** brief Function _uart_transmit() will transmit data with uart
  *  param huart is the handle for the HAL
