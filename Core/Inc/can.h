@@ -14,10 +14,10 @@
 typedef enum
 {
   CAN_OK      			 = 0x00,
-  CAN_ERROR				 = 0x09,
-  CAN_FILTER_ERROR   	 = 0x01,
-  CAN_START_ERROR    	 = 0x06,
-  CAN_ACTIVATE_IT_ERROR  = 0x03,
+  CAN_ERROR			 = 0x09,
+  CAN_FILTER_ERROR   	         = 0x01,
+  CAN_START_ERROR    	         = 0x06,
+  CAN_ACTIVATE_IT_ERROR          = 0x03,
   CAN_MAILBOX_ERROR		 = 0x07,
   CAN_MSG_ERROR			 = 0x05,
   CAN_EPV_ERROR			 = (0x00000002U),
@@ -32,7 +32,7 @@ typedef enum
   */
 typedef enum
 {
-	MOTOR  = 0x10,
+	MOTOR   = 0x10,
 	ENCODER = 0x11
 }	ID;
 
