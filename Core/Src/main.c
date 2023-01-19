@@ -48,6 +48,7 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 static volatile uint8_t Flag_Rx = 0;
+static volatile uint8_t Flag_Encoder = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -66,6 +67,15 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)// Packet receive
 	HAL_CAN_DeactivateNotification(&hcan1,CAN_IT_RX_FIFO0_MSG_PENDING);
 	Flag_Rx = 1;
 }
+void CAN_Encoder_Callback()
+{
+
+}
+
+void CAN_Motor_Callback()
+{
+
+}
 /* USER CODE END 0 */
 
 /**
@@ -81,7 +91,6 @@ int main(void)
 	uint8_t RxData[8];								// Receive the data area
 	uint8_t TxData[8] = {'1','2','3'};				// Send data area
 	uint32_t pTxMailbox = 0;						// Send a mailbox box
-	uint32_t Mailbox_lvl = 0;
 
   /* USER CODE END 1 */
 
@@ -148,14 +157,16 @@ int main(void)
 
 	  if(Flag_Rx == 1)
 	  {
-		  _can_receive_pkg(hcan1, CAN_FILTER_FIFO0, CanRx, RxData, MOTOR);
+		  _can_receive_pkg(hcan1, CAN_FILTER_FIFO0, CanRx, RxData);
 		  Flag_Rx = 0;
 		  HAL_CAN_ActivateNotification(&hcan1,CAN_IT_RX_FIFO0_MSG_PENDING);
 		  _uart_transmit(huart2, RxData, sizeof(TxData), TRANSMIT_TIMEOUT);
 	  }
 
 
+
 	  _can_send_pkg(hcan1, CanTx, TxData, pTxMailbox);
+
 
 	  HAL_Delay(200);
   }
@@ -310,6 +321,12 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pins : PA9 PA10 */
+  GPIO_InitStruct.Pin = GPIO_PIN_9|GPIO_PIN_10;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pin : LD3_Pin */
   GPIO_InitStruct.Pin = LD3_Pin;

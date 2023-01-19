@@ -32,8 +32,8 @@ typedef enum
   */
 typedef enum
 {
-	MOTOR  = 0x00,
-	ENCODER = 0x01
+	MOTOR  = 0x10,
+	ENCODER = 0x11
 }	ID;
 
 // Callbackfunctions
@@ -66,7 +66,7 @@ CAN_Status _can_send_pkg(CAN_HandleTypeDef hcan, const CAN_TxHeaderTypeDef pHead
  *  returns CAN_OK if no error occurs
  *  returns CAN_ERROR if one of the HAL functions wont work
  */
-CAN_Status _can_receive_pkg(CAN_HandleTypeDef hcan, uint32_t RxFifo, CAN_RxHeaderTypeDef pHeader, uint8_t aData[], ID id);
+CAN_Status _can_receive_pkg(CAN_HandleTypeDef hcan, uint32_t RxFifo, CAN_RxHeaderTypeDef pHeader, uint8_t aData[]);
 
 /** brief Function _can_mailbox_fill() will return the number of empty mailboxes
  *  param hcan is the handle for the HAL

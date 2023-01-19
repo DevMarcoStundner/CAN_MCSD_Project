@@ -17,7 +17,7 @@ CAN_Status _can_init(CAN_HandleTypeDef hcan, CAN_FilterTypeDef CAN_Filter)
 	if(HAL_CAN_Start(&hcan) != HAL_OK)
 	    return CAN_START_ERROR;
 
-	if(HAL_CAN_ActivateNotification(&hcan,CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK) // Activate CAN_IT_RX_FIFO0_MSG_PENDING Interrupt
+	if(HAL_CAN_ActivateNotification(&hcan,CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK)
 		return CAN_ACTIVATE_IT_ERROR;
 
 	return CAN_OK;
@@ -35,13 +35,24 @@ CAN_Status _can_send_pkg(CAN_HandleTypeDef hcan, const CAN_TxHeaderTypeDef pHead
 	return CAN_OK;
 }
 
-CAN_Status _can_receive_pkg(CAN_HandleTypeDef hcan, uint32_t RxFifo, CAN_RxHeaderTypeDef pHeader, uint8_t aData[], ID id)
+CAN_Status _can_receive_pkg(CAN_HandleTypeDef hcan, uint32_t RxFifo, CAN_RxHeaderTypeDef pHeader, uint8_t aData[])
 {
 	if(HAL_CAN_GetRxMessage(&hcan, RxFifo, &pHeader, aData) != HAL_OK)
 		return CAN_MSG_ERROR;
-	/*
-	 * Hier die ID ermitteln und vergeben und callback aufrufen aber da nochmal genau fragen
-	 */
+
+	switch(pHeader.StdId)
+		  {
+			case MOTOR:
+					CAN_Motor_Callback();
+					break;
+			case ENCODER:
+					CAN_Encoder_Callback();
+					break;
+			default:
+					_can_error_check(&hcan);
+					break;
+		   }
+
 	return CAN_OK;
 }
 
@@ -64,18 +75,18 @@ CAN_Status _can_error_check(const CAN_HandleTypeDef *hcan)
 			case CAN_EPV_ERROR: 						//ERROR Passive
 					return CAN_EPV_ERROR;
 					break;
-			case CAN_BOF_ERROR:							//ERROR Bus-off
+			case CAN_BOF_ERROR:							//ERROR Bus-off nichts machen
 					return CAN_BOF_ERROR;
 					break;
-			case CAN_STF_ERROR:							//ERROR Stuff
+			case CAN_STF_ERROR:							//ERROR Stuff nichts machen
 					return CAN_STF_ERROR;
 					break;
-			case CAN_FOR_ERROR:							//ERROR Form
+			case CAN_FOR_ERROR:							//ERROR Form darauf hinweisen dass es ned passt
 					return CAN_FOR_ERROR;
 					break;
 			default:
-				return CAN_ERROR;						// another ERROR occured that is not implemented
-				break;
+					return CAN_ERROR;						// another ERROR occured that is not implemented
+					break;
 		  }
 }
 
