@@ -9,6 +9,9 @@
 
 #include "libll/stm32l4xx_ll_gpio.h"
 
+#define OS_TIMEOUT_TIMER TIM7
+#define OS_TIMEOUT_WIDTH (16U)
+
 static volatile uint64_t time = 0;
 static void (*timeout_callback)() = NULL;
 static void (*callback)(uint32_t) = NULL;
@@ -25,9 +28,9 @@ void SysTick_Handler() {
 /**
  * @brief Interrupt handler for TIM2 interrupts, used for the timeout functions
  */
-void TIM2_IRQHandler() {
-  if (LL_TIM_IsActiveFlag_UPDATE(TIM2)) {
-    LL_TIM_ClearFlag_UPDATE(TIM2);
+void TIM7_IRQHandler() {
+  if (LL_TIM_IsActiveFlag_UPDATE(OS_TIMEOUT_TIMER)) {
+    LL_TIM_ClearFlag_UPDATE(OS_TIMEOUT_TIMER);
     if (timeout_callback != NULL) {
       timeout_callback();
     }
@@ -67,10 +70,10 @@ void os_init() {
   while(LL_RCC_SYS_CLKSOURCE_STATUS_PLL != LL_RCC_GetSysClkSource());
   time = 0;
   SystemCoreClockUpdate();
-  // enable TIM2 for timeout
-  LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM2);
-  NVIC_EnableIRQ(TIM2_IRQn);
-  NVIC_SetPriority(TIM2_IRQn, 0x01);
+  // enable timer for timeout
+  LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM7);
+  NVIC_EnableIRQ(TIM7_IRQn);
+  NVIC_SetPriority(TIM7_IRQn, 0x01);
   // configure and enable systick 1ms interrupt
   LL_Init1msTick(SystemCoreClock);
   SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk;
@@ -124,28 +127,28 @@ uint8_t os_timeout(uint64_t timeout_ns, void(*callback)()) {
   if (scaled_timeout == 0) {
     return 1; //timeout is too small
   }
-  LL_TIM_InitTypeDef tim2_init;
-  LL_TIM_StructInit(&tim2_init);
-  tim2_init.Prescaler = scaled_timeout/((uint64_t)1<<32);
-  tim2_init.Autoreload = scaled_timeout%((uint64_t)1<<32);
+  LL_TIM_InitTypeDef tim_init;
+  LL_TIM_StructInit(&tim_init);
+  tim_init.Prescaler = scaled_timeout/((uint64_t)1<<OS_TIMEOUT_WIDTH);
+  tim_init.Autoreload = scaled_timeout%((uint64_t)1<<OS_TIMEOUT_WIDTH);
   // check if timeout is already active
-  if (LL_TIM_IsEnabledCounter(TIM2)) {
+  if (LL_TIM_IsEnabledCounter(OS_TIMEOUT_TIMER)) {
     return 1;
   }
-  LL_TIM_DisableIT_UPDATE(TIM2);
-  LL_TIM_SetUpdateSource(TIM2, LL_TIM_UPDATESOURCE_COUNTER); // maybe remove if init does not work
-  LL_TIM_SetOnePulseMode(TIM2, LL_TIM_ONEPULSEMODE_SINGLE);
-  LL_TIM_Init(TIM2, &tim2_init);
+  LL_TIM_DisableIT_UPDATE(OS_TIMEOUT_TIMER);
+  LL_TIM_SetUpdateSource(OS_TIMEOUT_TIMER, LL_TIM_UPDATESOURCE_COUNTER); // maybe remove if init does not work
+  LL_TIM_SetOnePulseMode(OS_TIMEOUT_TIMER, LL_TIM_ONEPULSEMODE_SINGLE);
+  LL_TIM_Init(OS_TIMEOUT_TIMER, &tim_init);
   // set callback
   timeout_callback = callback;
   // activate timer
-  LL_TIM_ClearFlag_UPDATE(TIM2);
-  LL_TIM_EnableIT_UPDATE(TIM2);
-  LL_TIM_EnableCounter(TIM2);
+  LL_TIM_ClearFlag_UPDATE(OS_TIMEOUT_TIMER);
+  LL_TIM_EnableIT_UPDATE(OS_TIMEOUT_TIMER);
+  LL_TIM_EnableCounter(OS_TIMEOUT_TIMER);
   if(callback == NULL) {
     // sleep as long as timer is running
     // while is in here as other interrupts(e.g. systick) still fire
-    while(LL_TIM_IsEnabledCounter(TIM2)) {
+    while(LL_TIM_IsEnabledCounter(OS_TIMEOUT_TIMER)) {
       __WFI();
     }
   }

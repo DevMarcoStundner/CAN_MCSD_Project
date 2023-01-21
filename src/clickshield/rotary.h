@@ -6,6 +6,7 @@
 
 void cs_rot_init();
 void cs_rot_reset();
+void cs_rot_handle();
 int32_t cs_rot_getPos();
 int32_t cs_rot_checkOverflow();
 int32_t cs_rot_getDiff();

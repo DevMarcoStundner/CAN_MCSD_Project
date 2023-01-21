@@ -1,11 +1,9 @@
 #include "serial.h"
 
-#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include <stdbool.h>
 
 #include "libll/stm32l4xx_ll_bus.h"
 #include "libll/stm32l4xx_ll_usart.h"
@@ -16,22 +14,10 @@
 #define SER_DMATX LL_DMA_CHANNEL_7
 #define SER_DMARX LL_DMA_CHANNEL_6
 
-typedef struct {
-  char cmd;
-  uint8_t (*cb)(char*, char*);
-} ser_cmds_TypeDef;
-
 typedef enum {
   CMD_ACK, 
   CMD_NACK
 } ser_respack_TypeDef;
-
-typedef struct ser_buf_TypeDef ser_buf_TypeDef;
-struct ser_buf_TypeDef {
-  char buf[SER_CMDBUFLEN+1];
-  bool used;
-  ser_buf_TypeDef * next_buffer;
-};
 
 static ser_cmds_TypeDef commands[SER_MAX_COMMANDS] = {{'\0',NULL}};
 static ser_buf_TypeDef cmd_buffers[SER_CMDBUFCNT] = {0};
@@ -40,7 +26,6 @@ static ser_buf_TypeDef * volatile cur_tx_buf = NULL;
 
 static void handle_command(ser_buf_TypeDef * buffer);
 static void transmit_response(ser_buf_TypeDef *buffer);
-static ser_buf_TypeDef * get_free_buf();
 static ser_buf_TypeDef * get_first_buf(ser_buf_TypeDef * startbuf);
 static ser_buf_TypeDef * get_last_buf(ser_buf_TypeDef * startbuf);
 static ser_buf_TypeDef * get_prev_buf(ser_buf_TypeDef * startbuf) __attribute__((unused));
@@ -60,7 +45,7 @@ void USART2_IRQHandler(void) {
     if (cur_rx_buf->used == true) {
       LL_DMA_DisableChannel(DMA1, SER_DMARX);
       // switch to new buffer
-      ser_buf_TypeDef * newbuf = get_free_buf();
+      ser_buf_TypeDef * newbuf = ser_get_free_buf();
       if (newbuf == NULL) {
         cur_rx_buf->used = false;
         // could transmit no free buffer error message here, but no free buffer is available
@@ -110,7 +95,7 @@ void DMA1_Channel6_IRQHandler(void){
     LL_DMA_DisableChannel(DMA1, SER_DMARX);
     // command was too long
     if (cur_rx_buf->used == false) {
-      ser_buf_TypeDef * txbuf = get_free_buf();
+      ser_buf_TypeDef * txbuf = ser_get_free_buf();
       if (txbuf != NULL) {
         sprintf(txbuf->buf, "NACK\n#?,Command too long\n");
         transmit_response(txbuf);
@@ -239,7 +224,7 @@ uint8_t ser_addcmd(char cmd, uint8_t (*func)(char*,char*)) {
  * @brief get the address of a free buffer
  * @return NULL when no buffer is available, the buffer address otherwise
  */
-static ser_buf_TypeDef * get_free_buf() {
+ser_buf_TypeDef * ser_get_free_buf() {
   for (int i=0; i<SER_CMDBUFCNT; i++) {
     ser_buf_TypeDef * buf = &cmd_buffers[i];
     if ((buf->used == false) && (buf != cur_rx_buf) && (buf != cur_tx_buf)) {
@@ -361,4 +346,18 @@ static void handle_command(ser_buf_TypeDef * buffer) {
     snprintf(buffer->buf, SER_CMDBUFLEN, "NACK\n#?,Invalid Command Format\n");
   }
   transmit_response(buffer);
+}
+
+/*
+ * @brief Transmit a message over usart
+ * @note This injects the message into the regular serial command stream
+ * @param buffer is the buffer address to be transmitted, this has to be aquired via ser_get_free_buf
+ */
+void ser_txdata(ser_buf_TypeDef * buffer) {
+  if (buffer != NULL) {
+    // insert \0 at last buffer position
+    buffer->buf[SER_CMDBUFLEN] = '\0';
+    // queue transmission
+    transmit_response(buffer);
+  }
 }
