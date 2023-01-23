@@ -12,6 +12,7 @@
 #include "utils/adc.h"
 #include "clickshield/clickshield.h"
 #include "clickshield/rotary.h"
+#include "clickshield/stepper.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -147,6 +148,7 @@ int main()
   ser_addcmd('b', ser_getbtnpresses);
 
   cs_rot_init();
+  cs_step_init();
 
   // enable event loop
   os_setcallback(controlloop);
@@ -157,6 +159,7 @@ int main()
 
   uint8_t pat = 0;
 	while (1) {
+    cs_step_move(-10000);
     os_timeout(250e6, NULL);
     ser_buf_TypeDef * buffer = ser_get_free_buf();
     if (buffer != NULL) {
