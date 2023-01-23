@@ -22,25 +22,26 @@
 #define ROTRESET_PIN LL_GPIO_PIN_15
 #define ROTRESET_PORT GPIOC
 
-static int32_t position = 0;
+const static uint32_t maxcnt = 5;
+static volatile int32_t position = 0;
 static volatile int32_t overflow = 0;
-static int32_t lastpos = 0;
-//static uint16_t leds;
-
-// spi1 interrupt handler
+static volatile uint32_t lastcnt = 0;
+static uint32_t tmpcntval = 0;
 
 // timer 2 interrupt handler
 void TIM2_IRQHandler() {
   if (LL_TIM_IsActiveFlag_UPDATE(TIM2)) {
-    if (LL_TIM_GetCounter(TIM2) > 500) {
-      overflow++;
-    } else {
-      overflow--;
-    }
+    tmpcntval = LL_TIM_GetCounter(TIM2);
     LL_TIM_ClearFlag_UPDATE(TIM2);
+    if (LL_TIM_GetCounter(TIM2) > maxcnt/2) {
+      overflow--;
+      lastcnt++; // to avoid off by one error
+    } else {
+      overflow++;
+      lastcnt--; // to avoid off by one error
+    }
   }
 }
-
 
 void cs_rot_init() {
   // init gpio
@@ -98,9 +99,9 @@ void cs_rot_init() {
   LL_TIM_InitTypeDef s_timinit;
   LL_TIM_StructInit(&s_timinit);
   s_timinit.Prescaler = 0;
-  s_timinit.Autoreload = 1000;
+  s_timinit.Autoreload = maxcnt;
   s_timinit.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
-  s_timinit.RepetitionCounter = 0;
+  //s_timinit.RepetitionCounter = 0;
   LL_TIM_Init(TIM2, &s_timinit);
 
   LL_TIM_ENCODER_InitTypeDef s_timencinit;
@@ -108,12 +109,16 @@ void cs_rot_init() {
   s_timencinit.IC1Polarity = LL_TIM_IC_POLARITY_BOTHEDGE;
   s_timencinit.IC1ActiveInput = LL_TIM_ACTIVEINPUT_DIRECTTI;
   s_timencinit.IC1Prescaler = LL_TIM_ICPSC_DIV1;
-  s_timencinit.IC1Filter = LL_TIM_IC_FILTER_FDIV4_N8;
+  s_timencinit.IC1Filter = LL_TIM_IC_FILTER_FDIV32_N8;
   s_timencinit.IC2Polarity = LL_TIM_IC_POLARITY_RISING;
   s_timencinit.IC2ActiveInput = LL_TIM_ACTIVEINPUT_DIRECTTI;
   s_timencinit.IC2Prescaler = LL_TIM_ICPSC_DIV1;
-  s_timencinit.IC2Filter = LL_TIM_IC_FILTER_FDIV4_N8;
+  s_timencinit.IC2Filter = LL_TIM_IC_FILTER_FDIV32_N8;
   LL_TIM_ENCODER_Init(TIM2, &s_timencinit);
+  LL_TIM_EnableIT_UPDATE(TIM2);
+  LL_TIM_ClearFlag_UPDATE(TIM2);
+  NVIC_EnableIRQ(TIM2_IRQn);
+  NVIC_SetPriority(TIM2_IRQn, 0x01);
 
   LL_TIM_EnableCounter(TIM2);
 
@@ -127,15 +132,25 @@ void cs_rot_reset() {
 }
 
 void cs_rot_handle() {
-  LL_TIM_DisableUpdateEvent(TIM2);
-  position += (LL_TIM_GetCounter(TIM2) - lastpos) + overflow*1000;
+  NVIC_DisableIRQ(TIM2_IRQn);
+  uint32_t timcnt = LL_TIM_GetCounter(TIM2);
+  position += timcnt - lastcnt + overflow*maxcnt;
+  lastcnt = timcnt;
   overflow = 0;
-  LL_TIM_EnableUpdateEvent(TIM2);
+  NVIC_EnableIRQ(TIM2_IRQn);
 }
 
 int32_t cs_rot_getPos() {
-  return LL_TIM_GetCounter(TIM2);
   // return current position
+  return position;
+}
+
+uint16_t cs_rot_calcIndicator(int32_t position, uint32_t fullscale) {
+  int32_t poscnt = (position*16)/fullscale;
+  if (position < 0) {
+    poscnt = 16+poscnt;
+  }
+  return 1<<(poscnt);
 }
 
 void cs_rot_setIndicator(uint16_t leds) {

@@ -4,6 +4,9 @@
 #include "libll/stm32l4xx_ll_bus.h"
 #include "libll/stm32l4xx_ll_gpio.h"
 
+// debugging only
+#include "libll/stm32l4xx_ll_tim.h"
+
 #include "os/os.h"
 #include "utils/serial.h"
 #include "utils/adc.h"
@@ -41,6 +44,8 @@ static uint8_t ser_getbtnpresses(char * outbuf, char * const cmdbuf __attribute_
 static void controlloop(uint32_t looptime) {
   //LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_3);
   cs_rot_handle();
+  uint16_t leds = cs_rot_calcIndicator(cs_rot_getPos()%16,16);
+  cs_rot_setIndicator(leds);
   CS_LoopHandler(looptime);
   ser_handle();
   //LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_3);
@@ -151,21 +156,16 @@ int main()
   //while (!tim_elapsed);
 
   uint8_t pat = 0;
-  static uint16_t ledpos = 0;
 	while (1) {
-    if (ledpos == 0) {
-      ledpos = 1;
-    } else {
-      ledpos <<= 1;
-    }
-    cs_rot_setIndicator(ledpos);
+    os_timeout(250e6, NULL);
     ser_buf_TypeDef * buffer = ser_get_free_buf();
     if (buffer != NULL) {
-      snprintf(buffer->buf, SER_CMDBUFLEN, "Encoder: %li\n", cs_rot_getPos());
+      //snprintf(buffer->buf, SER_CMDBUFLEN, "Encoder: EMPTY\n");
+      //snprintf(buffer->buf, SER_CMDBUFLEN, "Encoder: %li\n", cs_rot_getPos());
+      snprintf(buffer->buf, SER_CMDBUFLEN, "Encoder: %li,%lu,%lu\n", cs_rot_getPos(), LL_TIM_GetCounter(TIM2), LL_TIM_GetCounter(TIM2));
       ser_txdata(buffer);
     }
 
-    os_timeout(250e6, NULL);
   }
 	return 0;
 }

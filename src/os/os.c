@@ -26,7 +26,7 @@ void SysTick_Handler() {
 }
 
 /**
- * @brief Interrupt handler for TIM2 interrupts, used for the timeout functions
+ * @brief Interrupt handler for TIM7 interrupts, used for the timeout functions
  */
 void TIM7_IRQHandler() {
   if (LL_TIM_IsActiveFlag_UPDATE(OS_TIMEOUT_TIMER)) {
@@ -73,7 +73,7 @@ void os_init() {
   // enable timer for timeout
   LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM7);
   NVIC_EnableIRQ(TIM7_IRQn);
-  NVIC_SetPriority(TIM7_IRQn, 0x01);
+  NVIC_SetPriority(TIM7_IRQn, 0x02);
   // configure and enable systick 1ms interrupt
   LL_Init1msTick(SystemCoreClock);
   SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk;
