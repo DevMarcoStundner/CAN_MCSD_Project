@@ -44,9 +44,9 @@ static uint8_t ser_getbtnpresses(char * outbuf, char * const cmdbuf __attribute_
  */
 static void controlloop(uint32_t looptime) {
   //LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_3);
-  cs_rot_handle();
-  uint16_t leds = cs_rot_calcIndicator(cs_rot_getPos()%16,16);
-  cs_rot_setIndicator(leds);
+  //cs_rot_handle();
+  //uint16_t leds = cs_rot_calcIndicator(cs_rot_getPos()%16,16);
+  //cs_rot_setIndicator(leds);
   CS_LoopHandler(looptime);
   ser_handle();
   //LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_3);
@@ -132,14 +132,15 @@ void timeouthandler() {
 
 int main()
 {
-  //LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOB);
+  LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOB);
   //LL_GPIO_SetPinMode(GPIOB, LL_GPIO_PIN_3, LL_GPIO_MODE_OUTPUT);
   //LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_3);
 
+  CS_Init(CS_INIT_BTN | CS_INIT_RGB | CS_INIT_DIM);
   CS_Init(CS_INIT_BTN);
   CS_BTN_SetCallback(btnhandler);
 
-  //myadc_configure(MYADC_PIN_DAC1);
+  myadc_configure(MYADC_PIN_DAC1);
 
   ser_init();
   ser_addcmd('h', serhelp);
@@ -147,8 +148,8 @@ int main()
   ser_addcmd('m', ser_measadc);
   ser_addcmd('b', ser_getbtnpresses);
 
-  cs_rot_init();
-  cs_step_init();
+  //cs_rot_init();
+  //cs_step_init();
 
   // enable event loop
   os_setcallback(controlloop);
@@ -159,8 +160,9 @@ int main()
 
   uint8_t pat = 0;
 	while (1) {
-    cs_step_move(-10000);
+    //cs_step_move(-10000);
     os_timeout(250e6, NULL);
+    /*
     ser_buf_TypeDef * buffer = ser_get_free_buf();
     if (buffer != NULL) {
       //snprintf(buffer->buf, SER_CMDBUFLEN, "Encoder: EMPTY\n");
@@ -168,7 +170,7 @@ int main()
       snprintf(buffer->buf, SER_CMDBUFLEN, "Encoder: %li,%lu,%lu\n", cs_rot_getPos(), LL_TIM_GetCounter(TIM2), LL_TIM_GetCounter(TIM2));
       ser_txdata(buffer);
     }
-
+    */
   }
 	return 0;
 }

@@ -9,13 +9,13 @@
 
 #include "libll/stm32l4xx_ll_gpio.h"
 
-#define OS_TIMEOUT_TIMER TIM7
-#define OS_TIMEOUT_WIDTH (16U)
-
 static volatile uint64_t time = 0;
 static void (*timeout_callback)() = NULL;
 static void (*callback)(uint32_t) = NULL;
 static os_timer_TypeDef active_timers[OS_MAX_TIMERS] = {0};
+
+#define OS_TIMEOUT_TIMER TIM7
+#define OS_TIMEOUT_WIDTH 16
 
 /**
  * @brief Interrrupt handler for Systick Interrupt
@@ -70,10 +70,10 @@ void os_init() {
   while(LL_RCC_SYS_CLKSOURCE_STATUS_PLL != LL_RCC_GetSysClkSource());
   time = 0;
   SystemCoreClockUpdate();
-  // enable timer for timeout
+  // enable TIM7 for timeout
   LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM7);
   NVIC_EnableIRQ(TIM7_IRQn);
-  NVIC_SetPriority(TIM7_IRQn, 0x02);
+  NVIC_SetPriority(TIM7_IRQn, 0x01);
   // configure and enable systick 1ms interrupt
   LL_Init1msTick(SystemCoreClock);
   SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk;
@@ -123,14 +123,10 @@ int8_t os_setalarm(uint64_t altime, void (*callback)(uint32_t)) {
  */
 uint8_t os_timeout(uint64_t timeout_ns, void(*callback)()) {
   // calculate timer settings
-  uint64_t scaled_timeout = timeout_ns*SystemCoreClock/(1e9);
-  if (scaled_timeout == 0) {
-    return 1; //timeout is too small
-  }
   LL_TIM_InitTypeDef tim_init;
   LL_TIM_StructInit(&tim_init);
-  tim_init.Prescaler = scaled_timeout/((uint64_t)1<<OS_TIMEOUT_WIDTH);
-  tim_init.Autoreload = scaled_timeout%((uint64_t)1<<OS_TIMEOUT_WIDTH);
+  tim_init.Prescaler = timeout_ns*SystemCoreClock/1e9/(uint64_t)(1<<OS_TIMEOUT_WIDTH);
+  tim_init.Autoreload = timeout_ns*SystemCoreClock/1e9/(tim_init.Prescaler+1);
   // check if timeout is already active
   if (LL_TIM_IsEnabledCounter(OS_TIMEOUT_TIMER)) {
     return 1;
