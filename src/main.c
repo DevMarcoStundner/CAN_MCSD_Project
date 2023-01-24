@@ -18,11 +18,9 @@
 #include <string.h>
 #include <stdio.h>
 
-static bool tim_elapsed = false;
-static unsigned int btncnt = 0;
-
+static bool btnflag = false;
 static void controlloop(uint32_t looptime);
-static void btnhandler(CS_BTN_Action_TypeDef value);
+static void btnhandler(bool longpress);
 
 static uint8_t serhelp(char * outbuf, char * const cmdbuf __attribute__((unused)));
 
@@ -31,9 +29,8 @@ static uint8_t serhelp(char * outbuf, char * const cmdbuf __attribute__((unused)
  * @params looptime contains the tick count value
  */
 static void controlloop(uint32_t looptime) {
-  cs_rot_handle();
-  uint16_t leds = cs_rot_calcIndicator(cs_rot_getPos()%30,30);
-  cs_rot_setIndicator(leds);
+  cs_rot_handle(looptime);
+  cs_rot_setIndicator(cs_rot_getPos());
   CS_LoopHandler(looptime);
   ser_handle();
 }
@@ -42,14 +39,13 @@ static void controlloop(uint32_t looptime) {
  * @brief callback for btn event from clickshield
  * @params value (contains the current event)
  */
-static void btnhandler(CS_BTN_Action_TypeDef value) {
-  switch(value) {
-    case CS_BTN_Action_Click:
-      btncnt++;
-      break;
-    case CS_BTN_Action_Longpress:
-      btncnt=0;
-      break;
+static void btnhandler(bool longpress) {
+  static bool blink = false;
+  if (longpress) {
+    blink = !blink;
+    cs_rot_setBlink(blink);
+  } else {
+    btnflag = true;
   }
 }
 
@@ -61,6 +57,10 @@ static uint8_t serhelp(char * outbuf, char * const cmdbuf __attribute__((unused)
   return 0;
 }
 
+float ret_test() {
+  return (float)10.0;
+}
+
 int main()
 {
   CS_Init(CS_INIT_BTN);
@@ -70,24 +70,26 @@ int main()
   ser_addcmd('h', serhelp);
 
   cs_rot_init();
+  cs_rot_setBtnCallback(btnhandler);
   cs_step_init();
   cs_step_setmode(CS_STEP_FULL);
 
   // enable event loop
   os_setcallback(controlloop);
 
+  float pos = 0;
 	while (1) {
-    cs_step_move(10);
     os_timeout(250e6, NULL);
-    /*
+    if (btnflag) {
+      pos += 1.0F;
+      cs_step_move(pos);
+      btnflag = false;
+    }
     ser_buf_TypeDef * buffer = ser_get_free_buf();
     if (buffer != NULL) {
-      //snprintf(buffer->buf, SER_CMDBUFLEN, "Encoder: EMPTY\n");
-      //snprintf(buffer->buf, SER_CMDBUFLEN, "Encoder: %li\n", cs_rot_getPos());
-      snprintf(buffer->buf, SER_CMDBUFLEN, "Encoder: %li,%lu,%lu\n", cs_rot_getPos(), LL_TIM_GetCounter(TIM2), LL_TIM_GetCounter(TIM2));
+      snprintf(buffer->buf, SER_CMDBUFLEN, "Encoder: %li\n", (int32_t)(cs_rot_getPos()*100.0));
       ser_txdata(buffer);
     }
-    */
   }
 	return 0;
 }

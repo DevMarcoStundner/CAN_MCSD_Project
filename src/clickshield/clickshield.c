@@ -18,7 +18,7 @@ static uint8_t rgbvalues[3] = {0,0,0};
 static volatile uint8_t rgbstates[3] = {0,0,0};
 static const uint32_t btndelay = 10;
 static const uint32_t btnlongpress = 500;
-static void (*btncallback)(CS_BTN_Action_TypeDef) = 0;
+static void (*btncallback)(bool longpress) = 0;
 static const bool btnactstate = false;
 static bool btnvalue = !btnactstate;
 
@@ -27,9 +27,9 @@ static void btnEventHandler(uint32_t time) {
   if (btnvalue == btnactstate) {
     btnepoch = time;
   } else if (time-btnepoch < btnlongpress) {
-    if (btncallback != 0) btncallback(CS_BTN_Action_Click);
+    if (btncallback != 0) btncallback(false);
   } else if (time-btnepoch > btnlongpress) {
-    if (btncallback != 0) btncallback(CS_BTN_Action_Longpress);
+    if (btncallback != 0) btncallback(true);
   }
 }
 
@@ -98,7 +98,7 @@ void CS_Init(uint16_t initDevices) {
  * @brief set button event callback function
  * @param function is a function pointer which takes a CS_BTN_Action_TypeDef enum
  */
-void CS_BTN_SetCallback(void (*function)(CS_BTN_Action_TypeDef)) {
+void CS_BTN_SetCallback(void (*function)(bool longpress)) {
   btncallback = function;
 }
 

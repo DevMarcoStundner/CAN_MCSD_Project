@@ -5,14 +5,14 @@
 #include <stdbool.h>
 
 typedef enum {
-  CS_STEP_FULL,
-  CS_STEP_HALF,
-  CS_STEP_QUARTER,
-  CS_STEP_EIGHTH
+  CS_STEP_FULL=1,
+  CS_STEP_HALF=2,
+  CS_STEP_QUARTER=4,
+  CS_STEP_EIGHTH=8
 } cs_step_mode_t;
 
 void cs_step_init();
-void cs_step_setmode(cs_step_mode_t mode);
-int cs_step_move(int32_t pos);
+int cs_step_setmode(cs_step_mode_t mode);
+int cs_step_move(float pos);
 
 #endif

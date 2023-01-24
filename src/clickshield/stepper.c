@@ -6,6 +6,8 @@
 #include "libll/stm32l4xx_ll_gpio.h"
 #include "libll/stm32l4xx_ll_tim.h"
 
+#include <math.h>
+
 #define STEPSD_PORT GPIOB
 #define STEPSTEP_PIN LL_GPIO_PIN_1
 #define STEPDIR_PIN LL_GPIO_PIN_0
@@ -22,32 +24,42 @@ static volatile enum {
   RUN_END
 } control_status;
 
-static int32_t lastpos = 0;
-static int32_t newpos = 0;
-static volatile int32_t relpos = 0;
+const static uint16_t maxreps = 400;
+const static float fullsteps = 1024;
+
+static cs_step_mode_t stepmode = CS_STEP_FULL;
+
+static volatile uint32_t stepcnt = 0;
+static volatile bool presetdone = false;
+static float curpos = 0;
 
 void TIM1_UP_TIM16_IRQHandler() {
   if (LL_TIM_IsActiveFlag_UPDATE(TIM1)) {
     LL_TIM_ClearFlag_UPDATE(TIM1);
-    if (control_status == RUN_LATCH) {
-      // make next move
-    } else {
-      control_status = RUN_IDLE;
+    presetdone = false;
+    if (control_status == RUN_END) {
+      if (LL_TIM_GetOnePulseMode(TIM1) == LL_TIM_ONEPULSEMODE_REPETITIVE) {
+        LL_TIM_SetOnePulseMode(TIM1, LL_TIM_ONEPULSEMODE_SINGLE);
+      } else {
+        control_status = RUN_IDLE;
+      }
     }
   }
 }
 
 void TIM1_CC_IRQHandler() {
   if (LL_TIM_IsActiveFlag_CC3(TIM1)) {
-    LL_TIM_ClearFlag_CC3(TIM3);
-    if (relpos > ((uint32_t)1<<16)-1) {
-      relpos -= 0xFFFF;
-      control_status = RUN_LATCH;
-      LL_TIM_SetRepetitionCounter(TIM1, (uint16_t)0xFFFF-1);
-    } else {
-      LL_TIM_SetRepetitionCounter(TIM1, (uint16_t)relpos);
-      LL_TIM_SetOnePulseMode(TIM1, LL_TIM_ONEPULSEMODE_SINGLE);
-      control_status = RUN_END;
+    LL_TIM_ClearFlag_CC3(TIM1);
+    if (!presetdone) {
+      if (stepcnt > maxreps) {
+        stepcnt -= maxreps;
+        LL_TIM_SetRepetitionCounter(TIM1, maxreps-1);
+        control_status = RUN_LATCH;
+      } else {
+        LL_TIM_SetRepetitionCounter(TIM1, (uint16_t)stepcnt);
+        control_status = RUN_END;
+      }
+      presetdone = true;
     }
   }
 }
@@ -107,11 +119,17 @@ void cs_step_init() {
   NVIC_EnableIRQ(TIM1_UP_TIM16_IRQn);
   NVIC_SetPriority(TIM1_UP_TIM16_IRQn, 0x01);
 
+  NVIC_EnableIRQ(TIM1_CC_IRQn);
+  NVIC_SetPriority(TIM1_CC_IRQn, 0x01);
+
   LL_TIM_EnableAllOutputs(TIM1);
   LL_GPIO_SetOutputPin(STEPEN_PORT, STEPEN_PIN);
 }
 
-void cs_step_setmode(cs_step_mode_t mode) {
+int cs_step_setmode(cs_step_mode_t mode) {
+  if (LL_TIM_IsEnabledCounter(TIM1)) {
+    return 1; // error as stepper move is active
+  }
   if (mode == CS_STEP_FULL || mode == CS_STEP_QUARTER) {
     LL_GPIO_ResetOutputPin(STEPMS1_PORT, STEPMS1_PIN);
   } else {
@@ -122,30 +140,42 @@ void cs_step_setmode(cs_step_mode_t mode) {
   } else {
     LL_GPIO_SetOutputPin(STEPMS2_PORT, STEPMS2_PIN);
   }
+  stepmode = mode;
+  return 0;
 }
 
-int cs_step_move(int32_t pos) {
+int cs_step_move(float pos) {
   if (LL_TIM_IsEnabledCounter(TIM1)) {
     return 1; // Error as move is currently active
   }
   // calc position increment
-  relpos = pos - newpos;
-  newpos = pos + relpos;
+  float relpos = pos - curpos;
+  curpos += relpos;
+  // set direction pin accordingly
   if (relpos < 0) {
     LL_GPIO_ResetOutputPin(STEPSD_PORT, STEPDIR_PIN);
   } else {
     LL_GPIO_SetOutputPin(STEPSD_PORT, STEPDIR_PIN);
   }
-  relpos = (uint32_t)relpos; // make value positive
-  if (relpos > ((uint32_t)1<<16)-1) {
-    relpos -= 0xFFFF;
+
+  stepcnt = (float)(fullsteps*stepmode)*fabs(relpos);
+
+  if (stepcnt > maxreps) {
+    stepcnt -= maxreps;
     control_status = RUN_LATCH;
-    LL_TIM_SetRepetitionCounter(TIM1, (uint16_t)0xFFFF-1);
+    LL_TIM_SetOnePulseMode(TIM1, LL_TIM_ONEPULSEMODE_REPETITIVE);
+    LL_TIM_SetRepetitionCounter(TIM1, maxreps-1);
+    LL_TIM_EnableIT_CC3(TIM1);
   } else {
-    LL_TIM_SetRepetitionCounter(TIM1, (uint16_t)relpos);
+    LL_TIM_SetRepetitionCounter(TIM1, (uint16_t)stepcnt);
     LL_TIM_SetOnePulseMode(TIM1, LL_TIM_ONEPULSEMODE_SINGLE);
     control_status = RUN_END;
+    LL_TIM_DisableIT_CC3(TIM1);
   }
+  LL_TIM_DisableIT_UPDATE(TIM1);
+  LL_TIM_GenerateEvent_UPDATE(TIM1);
+  LL_TIM_ClearFlag_UPDATE(TIM1);
+  LL_TIM_EnableIT_UPDATE(TIM1);
   LL_TIM_EnableCounter(TIM1);
 
   return 0;

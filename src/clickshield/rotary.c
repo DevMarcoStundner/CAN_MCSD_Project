@@ -5,6 +5,10 @@
 #include "libll/stm32l4xx_ll_spi.h"
 #include "libll/stm32l4xx_ll_tim.h"
 
+#include <stdlib.h>
+#include <stddef.h>
+#include <math.h>
+
 #define ROTA_PIN  LL_GPIO_PIN_1
 #define ROTA_PORT GPIOA
 #define ROTB_PIN  LL_GPIO_PIN_5
@@ -23,10 +27,24 @@
 #define ROTRESET_PORT GPIOC
 
 const static uint32_t maxcnt = 5;
+const static uint32_t blinkdelay = 125;
+
+static bool blink_enable = false;
+static uint16_t blinkmask = 0xFFFF;
+static uint16_t ledmask = 0;
+
 static volatile int32_t position = 0;
 static volatile int32_t overflow = 0;
 static volatile uint32_t lastcnt = 0;
 static uint32_t tmpcntval = 0;
+
+static const uint32_t btndelay = 10;
+static const uint32_t btnlongpress = 500;
+static const bool btnactlevel = true;
+static bool btnvalue = !btnactlevel;
+static void (*btncallback)(bool longpress) = NULL;
+
+static void updateIndicator();
 
 // timer 2 interrupt handler
 void TIM2_IRQHandler() {
@@ -58,7 +76,7 @@ void cs_rot_init() {
   LL_GPIO_Init(ROTA_PORT, &s_gpioinit);
 
   s_gpioinit.Pin = ROTBTN_PIN;
-  s_gpioinit.Pull = LL_GPIO_PULL_UP;
+  s_gpioinit.Pull = LL_GPIO_PULL_DOWN;
   s_gpioinit.Mode = LL_GPIO_MODE_INPUT;
   LL_GPIO_Init(ROTBTN_PORT, &s_gpioinit);
 
@@ -121,17 +139,40 @@ void cs_rot_init() {
   NVIC_SetPriority(TIM2_IRQn, 0x01);
 
   LL_TIM_EnableCounter(TIM2);
-
-  // set up variables
-
 }
 
-void cs_rot_reset() {
-  // reset timer
-  // reset variables
-}
+void cs_rot_handle(uint32_t time) {
+  // indicator updates
+  static uint32_t lasttime = 0;
+  static uint16_t ledmask_cache = 0;
+  if (blink_enable && (time-lasttime > blinkdelay)) {
+    blinkmask = ~blinkmask;
+    lasttime = time;
+  } else if (ledmask != ledmask_cache) {
+    ledmask_cache = ledmask;
+  }
+  updateIndicator();
 
-void cs_rot_handle() {
+  // btn event handling
+  static uint32_t btnlastfix = 0;
+  static uint32_t btnepoch = 0;
+  bool btntmp = LL_GPIO_IsInputPinSet(ROTBTN_PORT, ROTBTN_PIN);
+  if ((time-btnlastfix > btndelay) && (btntmp != btnvalue)) {
+    btnvalue = btntmp;
+    if (btnvalue == btnactlevel) {
+      btnepoch = time;
+    } else if (time-btnepoch < btnlongpress) {
+      // handle normal press
+      btncallback(false);
+    } else if (time-btnepoch > btnlongpress) {
+      // handle long press
+      btncallback(true);
+    }
+  } else if (btntmp == btnvalue) {
+    btnlastfix = time;
+  }
+
+  // rotary encoder handling
   NVIC_DisableIRQ(TIM2_IRQn);
   uint32_t timcnt = LL_TIM_GetCounter(TIM2);
   position += timcnt - lastcnt + overflow*maxcnt;
@@ -140,32 +181,36 @@ void cs_rot_handle() {
   NVIC_EnableIRQ(TIM2_IRQn);
 }
 
-int32_t cs_rot_getPos() {
+float cs_rot_getPos() {
   // return current position
-  return position;
+  return position/30.0;
 }
 
-uint16_t cs_rot_calcIndicator(int32_t position, uint32_t fullscale) {
-  int32_t poscnt = (position*16)/fullscale;
-  if (position < 0) {
-    poscnt = 16+poscnt;
+void cs_rot_setBlink(bool blink) {
+  blink_enable = blink;
+  if (!blink) {
+    blinkmask = 0xFFFF;
   }
-  return 1<<(poscnt);
 }
 
-void cs_rot_setIndicator(uint16_t leds) {
+void cs_rot_setIndicator(float pos) {
+  float bitpos = fmodf(fabs(pos), 1.0F);
+  if (pos<0) {
+    ledmask = 0x8000>>((unsigned)(bitpos*16.0));
+  } else {
+    ledmask = 0x0001<<((unsigned)(bitpos*16.0));
+  }
+}
+
+void cs_rot_setBtnCallback(void (*callback)(bool longpress)) {
+  btncallback = callback;
+}
+
+static void updateIndicator() {
   // cs low
   LL_GPIO_ResetOutputPin(ROTCS_PORT, ROTCS_PIN);
-  LL_SPI_TransmitData16(SPI1, leds);
+  LL_SPI_TransmitData16(SPI1, blinkmask & ledmask);
   while(LL_SPI_IsActiveFlag_BSY(SPI1));
   LL_GPIO_SetOutputPin(ROTCS_PORT, ROTCS_PIN);
   // cs high
-}
-
-int32_t cs_rot_getOverflow() {
-  // return overflow count
-}
-
-int32_t cs_rot_getDiff(){
-  // return difference to last position
 }

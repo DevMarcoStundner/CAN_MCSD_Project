@@ -14,13 +14,9 @@
 #define CS_RGB_POS_BLUE (0x02)
 
 typedef uint8_t CS_RGB_TypeDef[3];
-typedef enum {
-  CS_BTN_Action_Click,
-  CS_BTN_Action_Longpress,
-} CS_BTN_Action_TypeDef;
 
 void CS_Init(uint16_t);
-void CS_BTN_SetCallback(void (*)(CS_BTN_Action_TypeDef));
+void CS_BTN_SetCallback(void (*)(bool longpress));
 void CS_RGB_SetDim(CS_RGB_TypeDef);
 void CS_RGB_SetPins(volatile CS_RGB_TypeDef);
 bool CS_BTN_ReadRaw();

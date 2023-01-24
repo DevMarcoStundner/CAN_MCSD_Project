@@ -5,12 +5,10 @@
 #include <stdbool.h>
 
 void cs_rot_init();
-void cs_rot_reset();
-void cs_rot_handle();
-int32_t cs_rot_getPos();
-int32_t cs_rot_checkOverflow();
-int32_t cs_rot_getDiff();
-uint16_t cs_rot_calcIndicator(int32_t position, uint32_t fullscale);
-void cs_rot_setIndicator(uint16_t leds);
+void cs_rot_handle(uint32_t time);
+float cs_rot_getPos();
+void cs_rot_setIndicator(float pos);
+void cs_rot_setBlink(bool blink);
+void cs_rot_setBtnCallback(void (*callback)(bool longpress));
 
 #endif
