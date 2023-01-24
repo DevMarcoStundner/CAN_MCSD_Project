@@ -62,20 +62,8 @@ static void MX_CAN1_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)// Packet receive interrupt
-{
-	HAL_CAN_DeactivateNotification(&hcan1,CAN_IT_RX_FIFO0_MSG_PENDING);
-	Flag_Rx = 1;
-}
-void CAN_Encoder_Callback()
-{
 
-}
 
-void CAN_Motor_Callback()
-{
-
-}
 /* USER CODE END 0 */
 
 /**
@@ -85,12 +73,16 @@ void CAN_Motor_Callback()
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	CAN_FilterTypeDef 	CAN_Filter;
-	CAN_TxHeaderTypeDef	CanTx;
-	CAN_RxHeaderTypeDef 	CanRx;
+
 	uint8_t RxData[8];								// Receive the data area
 	uint8_t TxData[8] = {'1','2','3'};				// Send data area
 	uint32_t pTxMailbox = 0;						// Send a mailbox box
+
+
+
+
+
+
 
   /* USER CODE END 1 */
 
@@ -115,28 +107,7 @@ int main(void)
   MX_USART2_UART_Init();
   MX_CAN1_Init();
   /* USER CODE BEGIN 2 */
-
-
-
-  	CanTx.StdId 				= 0x00;
-  	CanTx.ExtId 				= 0x00;
-  	CanTx.IDE 				= CAN_ID_STD;
-  	CanTx.RTR 				= CAN_RTR_DATA;
-  	CanTx.DLC 				= 8;
-  	CanTx.TransmitGlobalTime		= DISABLE;
-
-  	CAN_Filter.FilterMode 			= CAN_FILTERMODE_IDMASK;
-  	CAN_Filter.FilterFIFOAssignment 	= CAN_FILTER_FIFO0;
-  	CAN_Filter.FilterBank 			= 0;
-  	CAN_Filter.FilterScale 			= CAN_FILTERSCALE_32BIT;
-  	CAN_Filter.FilterIdHigh 		= 0x000;
-  	CAN_Filter.FilterIdLow 			= 0x000;
-  	CAN_Filter.FilterMaskIdHigh		= 0x000;
-  	CAN_Filter.FilterMaskIdLow 		= 0x000;
-  	CAN_Filter.SlaveStartFilterBank 	= 14;
-  	CAN_Filter.FilterActivation 		= ENABLE;
-
-  	_can_init(hcan1, CAN_Filter);
+  	can_init();
   /* USER CODE END 2 */
 
   /* Infinite loop */

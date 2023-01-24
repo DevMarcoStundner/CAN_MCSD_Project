@@ -4,113 +4,135 @@
  *  Created on: Jan 11, 2023
  *      Author: marco
  */
+
+
 #include "main.h"
 #include "can.h"
 
+#define pkg_len 8
 
-CAN_Status _can_init(CAN_HandleTypeDef hcan, CAN_FilterTypeDef CAN_Filter)
+static CAN_HandleTypeDef   	hcan1;
+static CAN_FilterTypeDef    CAN_Filter;
+static CAN_TxHeaderTypeDef	CanTx;
+static CAN_RxHeaderTypeDef 	CanRx;
+
+	CanTx.StdId 				= 0x00;
+	CanTx.ExtId 				= 0x00;
+	CanTx.IDE 				= CAN_ID_STD;
+	CanTx.RTR 				= CAN_RTR_DATA;
+	CanTx.DLC 				= 8;
+	CanTx.TransmitGlobalTime		= DISABLE;
+
+	CAN_Filter.FilterMode 			= CAN_FILTERMODE_IDMASK;
+	CAN_Filter.FilterFIFOAssignment 	= CAN_FILTER_FIFO0;
+	CAN_Filter.FilterBank 			= 0;
+	CAN_Filter.FilterScale 			= CAN_FILTERSCALE_32BIT;
+	CAN_Filter.FilterIdHigh 		= 0x000;
+	CAN_Filter.FilterIdLow 			= 0x000;
+	CAN_Filter.FilterMaskIdHigh		= 0x000;
+	CAN_Filter.FilterMaskIdLow 		= 0x000;
+	CAN_Filter.SlaveStartFilterBank 	= 14;
+	CAN_Filter.FilterActivation 		= ENABLE;
+
+
+
+/** brief Function _can_init() will config the filter and inits CAN
+ */
+void can_init()
 {
-
-	if(HAL_CAN_ConfigFilter(&hcan, &CAN_Filter) != HAL_OK)
-	    return CAN_FILTER_ERROR;
-
-	if(HAL_CAN_Start(&hcan) != HAL_OK)
-	    return CAN_START_ERROR;
-
-	if(HAL_CAN_ActivateNotification(&hcan,CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK)
-		return CAN_ACTIVATE_IT_ERROR;
-
-	return CAN_OK;
+	HAL_CAN_ConfigFilter(&hcan1, &CAN_Filter);
+	HAL_CAN_Start(&hcan1);
+	HAL_CAN_ActivateNotification(&hcan1,CAN_IT_RX_FIFO0_MSG_PENDING);
 }
 
-CAN_Status _can_send_pkg(CAN_HandleTypeDef hcan, const CAN_TxHeaderTypeDef pHeader, const uint8_t aData[], uint32_t pTxMailbox)
+
+/** brief Function can_handle() will do all periodic tasks that CAN needs
+ *
+ */
+void can_handle()
 {
 
-	if(_can_mailbox_fill(hcan) == 0)
-		return CAN_MAILBOX_ERROR;
-
-	if(HAL_CAN_AddTxMessage(&hcan, &pHeader, aData, &pTxMailbox) != HAL_OK)
-		return CAN_MSG_ERROR;
-
-	return CAN_OK;
 }
 
-CAN_Status _can_receive_pkg(CAN_HandleTypeDef hcan, uint32_t RxFifo, CAN_RxHeaderTypeDef pHeader, uint8_t aData[])
+/** brief Function _can_send_pkg() will send the data and checks if the mailbox is full
+ *  param data is the data-array
+ *  param len is the length of the pkg
+ *  param callback is the func pointer to the callback that should be called
+ *  returns 0 if no error occurs and none zero if an error occurs
+ *///CAN_HandleTypeDef hcan, const CAN_TxHeaderTypeDef pHeader,
+int can_send_pkg(uint8_t *Data, uint8_t len, void (*callback)(uint32_t Mailbox))
 {
-	if(HAL_CAN_GetRxMessage(&hcan, RxFifo, &pHeader, aData) != HAL_OK)
-		return CAN_MSG_ERROR;
+	uint32_t TxMailbox;
+	uint8_t aData[8];
+	Data = &aData[0];
+	HAL_CAN_AddTxMessage(&hcan1, &CanTx, aData, &TxMailbox);
+	if((HAL_CAN_IsTxMessagePending(&hcan1, TxMailbox)) == 1)
+	{
+		callback(TxMailbox);
+		return 0;
+	}
+	return 1;
 
-	switch(pHeader.StdId)
-		  {
-			case MOTOR:
-					CAN_Motor_Callback();
-					break;
-			case ENCODER:
-					CAN_Encoder_Callback();
-					break;
-			default:
-					_can_error_check(&hcan);
-					break;
-		   }
-
-	return CAN_OK;
 }
 
-uint32_t _can_mailbox_fill(CAN_HandleTypeDef hcan)
+/**	brief Function can_register_id will call the callback with pkg
+ *  param id is the identifier for the pkg
+ *  param callback is the func pointer to the callback that should be called
+ *  returns 0 if okay retuns 1 if no id is assigned
+ */
+int can_register_id(uint32_t id,  void (*callback)(can_pkg_t *pkg))
 {
+	if(id <= reg_len && id >= 0)
+	{
+		callback(&can_pkg_reg[id]);
+		return 0;
+	}
+	return 1;
+}
 
-	uint32_t fill = HAL_CAN_GetTxMailboxesFreeLevel(&hcan);
+
+void _can_receive_pkg(uint8_t *Data)
+{
+	uint8_t aData[8];
+	int i = 0;
+	while(can_pkg_reg->full[i] == true)
+	{
+		i++;
+	}
+	can_pkg_reg->data[i] = &aData[0];
+	HAL_CAN_GetRxMessage(&hcan1, CAN_FILTER_FIFO0, &CanRx, aData);
+	can_pkg_reg->id[i] = i;
+
+}
+
+/** brief Function can_get_free_tx() will return the mailboxes that are ready for transmit
+ * returns number of free mailboxes
+ */
+uint32_t can_get_free_tx()
+{
+	uint32_t fill = HAL_CAN_GetTxMailboxesFreeLevel(&hcan1);
 	return fill;
 }
 
-
-CAN_Status _can_error_check(const CAN_HandleTypeDef *hcan)
+/** brief Function can_get_errors() will return public error state
+ * 	returns the error that occurs
+ */
+can_error_t can_get_errors()
 {
+	int CAN_ERROR_VALUE =0;
 
-	switch(hcan->ErrorCode)
-		  {
-			case CAN_OK:
-					return CAN_OK;
-					break;
-			case CAN_EPV_ERROR: 						//ERROR Passive
-					return CAN_EPV_ERROR;
-					break;
-			case CAN_BOF_ERROR:							//ERROR Bus-off nichts machen
-					return CAN_BOF_ERROR;
-					break;
-			case CAN_STF_ERROR:							//ERROR Stuff nichts machen
-					return CAN_STF_ERROR;
-					break;
-			case CAN_FOR_ERROR:							//ERROR Form darauf hinweisen dass es ned passt
-					return CAN_FOR_ERROR;
-					break;
-			default:
-					return CAN_ERROR;						// another ERROR occured that is not implemented
-					break;
-		  }
+	if(hcan1.ErrorCode == CAN_OK){return CAN_ERROR_NONE;}
+	if(hcan1.ErrorCode == CAN_EPV_ERROR){CAN_ERROR_VALUE |= CAN_ERROR_EPV;} //ERROR Passive
+	if(hcan1.ErrorCode == CAN_BOF_ERROR){CAN_ERROR_VALUE |= CAN_ERROR_BOF;} //ERROR Bus-off
+	if(hcan1.ErrorCode == CAN_STF_ERROR){CAN_ERROR_VALUE |= CAN_ERROR_STF;} //ERROR Stuff
+	if(hcan1.ErrorCode == CAN_FOR_ERROR){CAN_ERROR_VALUE |= CAN_ERROR_FOR;} //ERROR Form
+
+	return CAN_ERROR_VALUE;
+
 }
 
-
-/**
-  * brief  Motor-Pkg callback.
-  * return None
-  */
-__weak void CAN_Motor_Callback()
+void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)			// Packet receive interrupt
 {
-  /* NOTE : This function Should not be modified, when the callback is needed,
-            the Callback could be implemented in the
-            user file
-   */
-}
-/**
-  * brief  Encoder-Pkg callback.
-  * return None
-  */
-__weak void CAN_Encoder_Callback()
-{
-  /* NOTE : This function Should not be modified, when the callback is needed,
-            the Callback could be implemented in the
-            user file
-   */
+	HAL_CAN_DeactivateNotification(&hcan1,CAN_IT_RX_FIFO0_MSG_PENDING);
 }
 
