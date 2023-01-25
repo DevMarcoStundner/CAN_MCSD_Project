@@ -14,7 +14,17 @@
 
 
 
+#define pkg_len 8
 #define reg_len 20
+#define RQCP0 0
+#define RQCP1 8
+#define RQCP2 16
+
+#define  CAN_ERROR_NONE	0x0U
+#define  CAN_ERROR_EPV 	0x1U
+#define  CAN_ERROR_BOF 	0x2U
+#define  CAN_ERROR_STF 	0x4U
+#define  CAN_ERROR_FOR 	0x8U
 
 /**
   * @brief  CAN Status structures definition private
@@ -45,23 +55,12 @@ struct can_pkg_t {
   bool full;
 };
 
-/**
-  * @brief  CAN Status structures definition public
-  */
-typedef enum {
-  CAN_ERROR_NONE	=0x0U,
-  CAN_ERROR_EPV 	=0x1U,
-  CAN_ERROR_BOF 	=0x2U,
-  CAN_ERROR_STF 	=0x4U,
-  CAN_ERROR_FOR 	=0x8U
-} can_error_t;
 
-can_pkg_t can_pkg_reg[reg_len];
 
 
 void can_init();
 void can_handle();
-int can_send_pkg(uint8_t *data, uint8_t len, void (*callback)(uint32_t Mailbox));
+int can_send_pkg(uint32_t pkgid, uint8_t *data, uint8_t len, void (*callback)(uint32_t mailbox));
 int can_register_id(uint32_t id,  void (*callback)(can_pkg_t *pkg));
 uint32_t can_get_free_tx();
 can_error_t can_get_errors();
