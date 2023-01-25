@@ -8,6 +8,8 @@
 
 #include <math.h>
 
+#include "utils/utils.h"
+
 #define STEPSD_PORT GPIOB
 #define STEPSTEP_PIN LL_GPIO_PIN_1
 #define STEPDIR_PIN LL_GPIO_PIN_0
@@ -18,25 +20,31 @@
 #define STEPEN_PORT GPIOA
 #define STEPEN_PIN LL_GPIO_PIN_3
 
-static volatile enum {
+typedef enum {
   RUN_IDLE=0,
   RUN_LATCH,
   RUN_END
-} control_status;
+} control_status_t;
 
-const static uint16_t maxreps = 400;
-const static float fullsteps = 1024;
+static volatile control_status_t control_status = RUN_IDLE;
+
+const static uint16_t maxreps = 64;
+const static float fullsteps = 2048;
 
 static cs_step_mode_t stepmode = CS_STEP_FULL;
 
 static volatile uint32_t stepcnt = 0;
 static volatile bool presetdone = false;
+static volatile uint32_t interpos = 0;
 static float curpos = 0;
+static float newpos = 0;
+
+static void step_move(float pos);
 
 void TIM1_UP_TIM16_IRQHandler() {
   if (LL_TIM_IsActiveFlag_UPDATE(TIM1)) {
     LL_TIM_ClearFlag_UPDATE(TIM1);
-    presetdone = false;
+    LL_TIM_EnableIT_CC3(TIM1);
     if (control_status == RUN_END) {
       if (LL_TIM_GetOnePulseMode(TIM1) == LL_TIM_ONEPULSEMODE_REPETITIVE) {
         LL_TIM_SetOnePulseMode(TIM1, LL_TIM_ONEPULSEMODE_SINGLE);
@@ -50,16 +58,15 @@ void TIM1_UP_TIM16_IRQHandler() {
 void TIM1_CC_IRQHandler() {
   if (LL_TIM_IsActiveFlag_CC3(TIM1)) {
     LL_TIM_ClearFlag_CC3(TIM1);
-    if (!presetdone) {
-      if (stepcnt > maxreps) {
-        stepcnt -= maxreps;
-        LL_TIM_SetRepetitionCounter(TIM1, maxreps-1);
-        control_status = RUN_LATCH;
-      } else {
-        LL_TIM_SetRepetitionCounter(TIM1, (uint16_t)stepcnt);
-        control_status = RUN_END;
-      }
-      presetdone = true;
+    LL_TIM_DisableIT_CC3(TIM1);
+    if (stepcnt > maxreps) {
+      stepcnt -= maxreps;
+      LL_TIM_SetRepetitionCounter(TIM1, maxreps-1);
+      control_status = RUN_LATCH;
+    } else {
+      LL_TIM_SetRepetitionCounter(TIM1, (uint16_t)stepcnt);
+      stepcnt = 0;
+      control_status = RUN_END;
     }
   }
 }
@@ -100,7 +107,7 @@ void cs_step_init() {
 
   LL_TIM_InitTypeDef s_timinit;
   LL_TIM_StructInit(&s_timinit);
-  s_timinit.Prescaler = 8000; // 100Hz pwm frequency
+  s_timinit.Prescaler = 4000; // 100Hz pwm frequency
   s_timinit.Autoreload = 100;
   s_timinit.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
   s_timinit.RepetitionCounter = 0; // is set afterwards
@@ -126,6 +133,32 @@ void cs_step_init() {
   LL_GPIO_SetOutputPin(STEPEN_PORT, STEPEN_PIN);
 }
 
+void cs_step_handler(uint32_t time) {
+  static float newpos = 0;
+  static cs_step_mode_t newmode = CS_STEP_FULL;
+  static control_status_t prevstatus = RUN_IDLE;
+  static uint32_t previnterstep = 0;
+
+  if (control_status == RUN_IDLE) {
+    if (prevstatus == RUN_END || prevstatus == RUN_LATCH) {
+      // move finished
+      // send move finished
+      // send new position
+    }
+    if (!ut_fequal(curpos, newpos)) {
+      // new move requested
+      step_move(newpos);
+      // send move started
+    }
+  } else {
+    // stepper is running
+    // send intermediate position
+    float tmppos = newpos - (float)interpos/(float)(stepmode*fullsteps);
+  }
+  previnterstep = stepcnt;
+  prevstatus = control_status;
+}
+
 int cs_step_setmode(cs_step_mode_t mode) {
   if (LL_TIM_IsEnabledCounter(TIM1)) {
     return 1; // error as stepper move is active
@@ -144,10 +177,11 @@ int cs_step_setmode(cs_step_mode_t mode) {
   return 0;
 }
 
-int cs_step_move(float pos) {
-  if (LL_TIM_IsEnabledCounter(TIM1)) {
-    return 1; // Error as move is currently active
-  }
+void cs_step_setPosition(float pos) {
+  newpos = pos;
+}
+
+static void step_move(float pos) {
   // calc position increment
   float relpos = pos - curpos;
   curpos += relpos;
@@ -168,6 +202,7 @@ int cs_step_move(float pos) {
     LL_TIM_EnableIT_CC3(TIM1);
   } else {
     LL_TIM_SetRepetitionCounter(TIM1, (uint16_t)stepcnt);
+    stepcnt = 0;
     LL_TIM_SetOnePulseMode(TIM1, LL_TIM_ONEPULSEMODE_SINGLE);
     control_status = RUN_END;
     LL_TIM_DisableIT_CC3(TIM1);
@@ -177,6 +212,4 @@ int cs_step_move(float pos) {
   LL_TIM_ClearFlag_UPDATE(TIM1);
   LL_TIM_EnableIT_UPDATE(TIM1);
   LL_TIM_EnableCounter(TIM1);
-
-  return 0;
 }

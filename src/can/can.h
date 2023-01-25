@@ -22,7 +22,7 @@ typedef enum {
 
 void can_init();
 void can_handle();
-int can_send(uint8_t *data, uint8_t len, void (*callback)());
+int can_send(uint8_t *data, uint8_t len, void (*callback)(uint8_t txid));
 int can_register_id(uint32_t id,  void (*callback)(can_pkg_t *pkg));
 uint8_t can_get_free_tx();
 can_error_t can_get_errors();

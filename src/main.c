@@ -1,18 +1,10 @@
 #include "stm32l432xx.h"
-#include "libll/stm32l4xx_ll_utils.h"
-
-#include "libll/stm32l4xx_ll_bus.h"
-#include "libll/stm32l4xx_ll_gpio.h"
-
-// debugging only
-#include "libll/stm32l4xx_ll_tim.h"
 
 #include "os/os.h"
-#include "utils/serial.h"
-#include "utils/adc.h"
 #include "clickshield/clickshield.h"
 #include "clickshield/rotary.h"
 #include "clickshield/stepper.h"
+#include "utils/serial.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -31,6 +23,7 @@ static uint8_t serhelp(char * outbuf, char * const cmdbuf __attribute__((unused)
 static void controlloop(uint32_t looptime) {
   cs_rot_handle(looptime);
   cs_rot_setIndicator(cs_rot_getPos());
+  cs_step_handler(looptime);
   CS_LoopHandler(looptime);
   ser_handle();
 }
@@ -57,10 +50,6 @@ static uint8_t serhelp(char * outbuf, char * const cmdbuf __attribute__((unused)
   return 0;
 }
 
-float ret_test() {
-  return (float)10.0;
-}
-
 int main()
 {
   CS_Init(CS_INIT_BTN);
@@ -82,7 +71,7 @@ int main()
     os_timeout(250e6, NULL);
     if (btnflag) {
       pos += 1.0F;
-      cs_step_move(pos);
+      cs_step_setPosition(pos);
       btnflag = false;
     }
     ser_buf_TypeDef * buffer = ser_get_free_buf();

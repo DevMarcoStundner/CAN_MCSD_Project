@@ -10,3 +10,8 @@ void __attribute__((optimize("-fno-tree-loop-distribute-patterns"))) UT_byteset(
     dest[count] = ch;
   }
 }
+
+bool ut_fequal(float a, float b) {
+  const float tolerance = 1e-4;
+  return (a-b < tolerance);
+}

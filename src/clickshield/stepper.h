@@ -13,6 +13,7 @@ typedef enum {
 
 void cs_step_init();
 int cs_step_setmode(cs_step_mode_t mode);
-int cs_step_move(float pos);
+void cs_step_handler(uint32_t time);
+void cs_step_setPosition(float pos);
 
 #endif
