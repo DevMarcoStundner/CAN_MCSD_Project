@@ -49,10 +49,9 @@ typedef enum
   */
 typedef struct can_pkg_t can_pkg_t;
 struct can_pkg_t {
-  int id;
+  uint32_t id;
   uint8_t * data;
   uint8_t len;
-  bool full;
 };
 
 
@@ -63,17 +62,8 @@ void can_handle();
 int can_send_pkg(uint32_t pkgid, uint8_t *data, uint8_t len, void (*callback)(uint32_t mailbox));
 int can_register_id(uint32_t id,  void (*callback)(can_pkg_t *pkg));
 uint32_t can_get_free_tx();
-can_error_t can_get_errors();
-
-/** brief Function _can_receive_pkg() will receive the data and assigns Id
- *  param hcan is the handle for the HAL
- *  param RxFifo Fifo number of the received message to be read
- *  param pHeader is the struct for the RxHeader
- *  param aData is the data-array
- *  returns CAN_OK if no error occurs
- *  returns CAN_ERROR if one of the HAL functions wont work
- */
-void _can_receive_pkg(uint8_t *Data);
+int can_get_errors();
+void _can_receive_pkg();
 
 
 

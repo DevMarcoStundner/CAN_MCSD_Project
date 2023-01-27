@@ -74,16 +74,6 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 
-	uint8_t RxData[8];								// Receive the data area
-	uint8_t TxData[8] = {'1','2','3'};				// Send data area
-	uint32_t pTxMailbox = 0;						// Send a mailbox box
-
-
-
-
-
-
-
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -118,17 +108,18 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  /*
 	  if(_can_error_check(&hcan1) != CAN_OK)
 	  {
-		  /*
-		   * Überlegen was man hier sinnvoll machen kann
-		   */
+
+		   //Überlegen was man hier sinnvoll machen kann
+
 	  }
 
 
 	  if(Flag_Rx == 1)
 	  {
-		  _can_receive_pkg(hcan1, CAN_FILTER_FIFO0, CanRx, RxData);
+		  //_can_receive_pkg(hcan1, CAN_FILTER_FIFO0, CanRx, RxData);
 		  Flag_Rx = 0;
 		  HAL_CAN_ActivateNotification(&hcan1,CAN_IT_RX_FIFO0_MSG_PENDING);
 		  _uart_transmit(huart2, RxData, sizeof(TxData), TRANSMIT_TIMEOUT);
@@ -136,9 +127,9 @@ int main(void)
 
 
 
-	  _can_send_pkg(hcan1, CanTx, TxData, pTxMailbox);
+	  //_can_send_pkg(hcan1, CanTx, TxData, pTxMailbox);
 
-
+*/
 	  HAL_Delay(200);
   }
   /* USER CODE END 3 */
