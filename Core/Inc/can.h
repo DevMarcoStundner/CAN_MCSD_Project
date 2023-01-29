@@ -12,10 +12,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-
-
-#define pkg_len 8
-#define reg_len 20
+#define REG_LEN 20
 #define RQCP0 0
 #define RQCP1 8
 #define RQCP2 16
@@ -38,10 +35,10 @@ typedef enum
   CAN_ACTIVATE_IT_ERROR  = 0x03,
   CAN_MAILBOX_ERROR		 = 0x07,
   CAN_MSG_ERROR			 = 0x05,
-  CAN_EPV_ERROR			 = (0x00000002U),
-  CAN_BOF_ERROR			 = (0x00000004U),
-  CAN_STF_ERROR			 = (0x00000008U),
-  CAN_FOR_ERROR			 = (0x00000010U)
+  CAN_EPV_ERROR			 = 0x02U,
+  CAN_BOF_ERROR			 = 0x04U,
+  CAN_STF_ERROR			 = 0x08U,
+  CAN_FOR_ERROR			 = 0x10U
 } CAN_Status;
 
 /**
@@ -52,6 +49,12 @@ struct can_pkg_t {
   uint32_t id;
   uint8_t * data;
   uint8_t len;
+};
+
+typedef struct rxcallback rxcallback;
+struct rxcallback {
+	uint8_t id;
+	void(*rxcb)(can_pkg_t *pkg);
 };
 
 

@@ -13,10 +13,9 @@ static CAN_HandleTypeDef   	hcan1;
 static CAN_FilterTypeDef    canfilter;
 static CAN_TxHeaderTypeDef	cantx;
 static CAN_RxHeaderTypeDef 	canrx;
-static volatile int txmailboxfree = 4;
+static volatile int txmailboxfree[3] = {'4','4','4'};
 static void (* volatile txcallbacks[3])(uint32_t mailbox) = {NULL};
-static void (* volatile rxcallbackarray[20])() = {NULL};
-
+static volatile struct rxcallback rxcallbackarray[REG_LEN];
 /*void CAN1_TX_IRQHandler()
 {
 	if(CAN->TSR &(1<<RQCP0))
@@ -33,11 +32,18 @@ static void (* volatile rxcallbackarray[20])() = {NULL};
 	}
 
 }
-
-/** brief Function _can_init() will config the filter and inits CAN
+*/
+/*
+ * brief Function can_init() will init CAN
  */
 void can_init()
 {
+	for(int i = 0; i<=REG_LEN; i++)
+	{
+		rxcallbackarray[i].id = 0;
+		rxcallbackarray[i].rxcb = NULL;
+	}
+
 	cantx.StdId 					= 0x00;
 	cantx.ExtId 					= 0x00;
 	cantx.IDE 						= CAN_ID_STD;
@@ -58,7 +64,7 @@ void can_init()
 
 	HAL_CAN_ConfigFilter(&hcan1, &canfilter);
 	HAL_CAN_Start(&hcan1);
-	//HAL_CAN_ActivateNotifaction(&hcan1,);
+	HAL_CAN_ActivateNotification(&hcan1, CAN_IT_TX_MAILBOX_EMPTY);
 }
 
 
@@ -69,19 +75,25 @@ void can_handle()
 {
 	for(int i = 0; i<=2; i++)
 	{
-		if(txmailboxfree == i)
+		if(txmailboxfree[i] == i)
 		{
 			if(txcallbacks[i]!= NULL)
 			{
 				txcallbacks[i](i);
 				txcallbacks[i] = NULL;
 			}
+			HAL_CAN_ActivateNotification(&hcan1, CAN_IT_TX_MAILBOX_EMPTY);
+			txmailboxfree[i] = 4;
 		}
 	}
 	if(HAL_CAN_GetRxFifoFillLevel(&hcan1, CAN_RX_FIFO0) != 0)
 	{
-		_can_receive_pkg();
+		while(HAL_CAN_GetRxFifoFillLevel(&hcan1, CAN_RX_FIFO0) != 0)
+		{
+			_can_receive_pkg();
+		}
 	}
+
 
 }
 
@@ -105,21 +117,29 @@ int can_send_pkg(uint32_t pkgid, uint8_t *data, uint8_t len, void (*callback)(ui
 }
 
 /**	brief Function can_register_id will call the callback with pkg
- *  param id is the identifier for the pkg
+ *  param id is the identifier for the pkg must be <0
  *  param callback is the func pointer to the callback that should be called
- *  returns 0 if okay retuns 1 if no id is assigned
+ *  returns 0 if okay retuns 1 if no id is assigned or wrong id is given
  */
 int can_register_id(uint32_t id,  void (*callback)(can_pkg_t *pkg))
 {
-	if(id<=20)
+	if(id == 0)
 	{
-		if(rxcallbackarray[id] == NULL)
+		return 1;
+	}
+
+	for(int i = 0; i<=REG_LEN; i++)
+	{
+		if(rxcallbackarray[i].id == 0)
 		{
-			rxcallbackarray[id] = callback;
+			rxcallbackarray[i].id = id;
+			rxcallbackarray[i].rxcb = callback;
 			return 0;
 		}
 	}
+
 	return 1;
+
 }
 
 /** brief Function _can_receive_pkg() will receive the data and calls the associated callback to the id
@@ -127,14 +147,15 @@ int can_register_id(uint32_t id,  void (*callback)(can_pkg_t *pkg))
  */
 void _can_receive_pkg()
 {
-	struct can_pkg_t pkg = {0,0,0};
+	struct can_pkg_t *pkg = {NULL};
 
 
-	HAL_CAN_GetRxMessage(&hcan1, CAN_FILTER_FIFO0, &canrx, pkg.data);
+	HAL_CAN_GetRxMessage(&hcan1, CAN_FILTER_FIFO0, &canrx, pkg->data);
 
-	pkg.id = canrx.StdId;
-	pkg.len = canrx.DLC;
-	rxcallbackarray[pkg.id](pkg);
+	pkg->id = canrx.StdId;
+	pkg->len = canrx.DLC;
+	rxcallbackarray[canrx.StdId].rxcb(pkg);
+	rxcallbackarray[canrx.StdId].id = 0;
 
 }
 
@@ -166,15 +187,21 @@ int can_get_errors()
 
 void HAL_CAN_TxMailbox0CompleteCallback(CAN_HandleTypeDef *hcan)
 {
-	txmailboxfree = 0;
+	UNUSED(hcan);
+	HAL_CAN_DeactivateNotification(&hcan1, CAN_IT_TX_MAILBOX_EMPTY);
+	txmailboxfree[0] = 0;
 }
 
 void HAL_CAN_TxMailbox1CompleteCallback(CAN_HandleTypeDef *hcan)
 {
-	txmailboxfree = 1;
+	UNUSED(hcan);
+	HAL_CAN_DeactivateNotification(&hcan1, CAN_IT_TX_MAILBOX_EMPTY);
+	txmailboxfree[1] = 1;
 }
 
 void HAL_CAN_TxMailbox2CompleteCallback(CAN_HandleTypeDef *hcan)
 {
-	txmailboxfree = 2;
+	UNUSED(hcan);
+	HAL_CAN_DeactivateNotification(&hcan1, CAN_IT_TX_MAILBOX_EMPTY);
+	txmailboxfree[2] = 2;
 }

@@ -42,13 +42,11 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-CAN_HandleTypeDef hcan1;
-
 UART_HandleTypeDef huart2;
+CAN_HandleTypeDef  hcan1;
 
 /* USER CODE BEGIN PV */
-static volatile uint8_t Flag_Rx = 0;
-static volatile uint8_t Flag_Encoder = 0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -97,7 +95,7 @@ int main(void)
   MX_USART2_UART_Init();
   MX_CAN1_Init();
   /* USER CODE BEGIN 2 */
-  	can_init();
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -108,29 +106,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  /*
-	  if(_can_error_check(&hcan1) != CAN_OK)
-	  {
 
-		   //Überlegen was man hier sinnvoll machen kann
-
-	  }
-
-
-	  if(Flag_Rx == 1)
-	  {
-		  //_can_receive_pkg(hcan1, CAN_FILTER_FIFO0, CanRx, RxData);
-		  Flag_Rx = 0;
-		  HAL_CAN_ActivateNotification(&hcan1,CAN_IT_RX_FIFO0_MSG_PENDING);
-		  _uart_transmit(huart2, RxData, sizeof(TxData), TRANSMIT_TIMEOUT);
-	  }
-
-
-
-	  //_can_send_pkg(hcan1, CanTx, TxData, pTxMailbox);
-
-*/
-	  HAL_Delay(200);
   }
   /* USER CODE END 3 */
 }
@@ -212,7 +188,7 @@ static void MX_CAN1_Init(void)
   /* USER CODE END CAN1_Init 1 */
   hcan1.Instance = CAN1;
   hcan1.Init.Prescaler = 16;
-  hcan1.Init.Mode = CAN_MODE_LOOPBACK;
+  hcan1.Init.Mode = CAN_MODE_NORMAL;
   hcan1.Init.SyncJumpWidth = CAN_SJW_2TQ;
   hcan1.Init.TimeSeg1 = CAN_BS1_8TQ;
   hcan1.Init.TimeSeg2 = CAN_BS2_8TQ;
