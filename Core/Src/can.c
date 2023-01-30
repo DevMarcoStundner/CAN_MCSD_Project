@@ -9,30 +9,42 @@
 #include "main.h"
 #include "can.h"
 
+#define REG_LEN 20
+
 static CAN_HandleTypeDef   	hcan1;
 static CAN_FilterTypeDef    canfilter;
 static CAN_TxHeaderTypeDef	cantx;
 static CAN_RxHeaderTypeDef 	canrx;
-static volatile int txmailboxfree[3] = {'4','4','4'};
+static volatile bool txmailboxfree[3] {false};
 static void (* volatile txcallbacks[3])(uint32_t mailbox) = {NULL};
-static volatile struct rxcallback rxcallbackarray[REG_LEN];
-/*void CAN1_TX_IRQHandler()
-{
-	if(CAN->TSR &(1<<RQCP0))
-	{
-		txmailboxfree = 0;
-	}
-	if(CAN->TSR &(1<<RQCP1))
-	{
-		txmailboxfree = 1;
-	}
-	if(CAN->TSR &(1<<RQCP2))
-	{
-		txmailboxfree = 2;
-	}
 
-}
-*/
+typedef struct rxcallback_t rxcallback_t;
+struct rxcallback_t {
+	uint8_t id;
+	void(*rxcb)(can_pkg_t *pkg);
+};
+
+static volatile struct rxcallback_t rxcallbackarray[REG_LEN];
+
+/**
+  * @brief  CAN Status structures definition private
+  */
+typedef enum
+{
+  CAN_OK      			 = 0x00,
+  CAN_ERROR				 = 0x09,
+  CAN_FILTER_ERROR   	 = 0x01,
+  CAN_START_ERROR    	 = 0x06,
+  CAN_ACTIVATE_IT_ERROR  = 0x03,
+  CAN_MAILBOX_ERROR		 = 0x07,
+  CAN_MSG_ERROR			 = 0x05,
+  CAN_EPV_ERROR			 = 0x02U,
+  CAN_BOF_ERROR			 = 0x04U,
+  CAN_STF_ERROR			 = 0x08U,
+  CAN_FOR_ERROR			 = 0x10U
+} CAN_Status;
+
+
 /*
  * brief Function can_init() will init CAN
  */
@@ -75,17 +87,17 @@ void can_handle()
 {
 	for(int i = 0; i<=2; i++)
 	{
-		if(txmailboxfree[i] == i)
+		if(txmailboxfree[i] == true)
 		{
-			if(txcallbacks[i]!= NULL)
+			if(txcallbacks[i] != NULL)
 			{
 				txcallbacks[i](i);
 				txcallbacks[i] = NULL;
 			}
-			HAL_CAN_ActivateNotification(&hcan1, CAN_IT_TX_MAILBOX_EMPTY);
-			txmailboxfree[i] = 4;
+			txmailboxfree[i] = false;
 		}
 	}
+	HAL_CAN_ActivateNotification(&hcan1, CAN_IT_TX_MAILBOX_EMPTY);
 	if(HAL_CAN_GetRxFifoFillLevel(&hcan1, CAN_RX_FIFO0) != 0)
 	{
 		while(HAL_CAN_GetRxFifoFillLevel(&hcan1, CAN_RX_FIFO0) != 0)
@@ -102,7 +114,7 @@ void can_handle()
  *  param len is the length of the pkg
  *  param callback is the func pointer to the callback that should be called
  *  returns -1 on error and mailbox id on success
- *///CAN_HandleTypeDef hcan, const CAN_TxHeaderTypeDef pHeader,
+ */
 int can_send_pkg(uint32_t pkgid, uint8_t *data, uint8_t len, void (*callback)(uint32_t mailbox))
 {
 	uint32_t mailboxid;
@@ -189,19 +201,19 @@ void HAL_CAN_TxMailbox0CompleteCallback(CAN_HandleTypeDef *hcan)
 {
 	UNUSED(hcan);
 	HAL_CAN_DeactivateNotification(&hcan1, CAN_IT_TX_MAILBOX_EMPTY);
-	txmailboxfree[0] = 0;
+	txmailboxfree[0] = true;
 }
 
 void HAL_CAN_TxMailbox1CompleteCallback(CAN_HandleTypeDef *hcan)
 {
 	UNUSED(hcan);
 	HAL_CAN_DeactivateNotification(&hcan1, CAN_IT_TX_MAILBOX_EMPTY);
-	txmailboxfree[1] = 1;
+	txmailboxfree[1] = true;
 }
 
 void HAL_CAN_TxMailbox2CompleteCallback(CAN_HandleTypeDef *hcan)
 {
 	UNUSED(hcan);
 	HAL_CAN_DeactivateNotification(&hcan1, CAN_IT_TX_MAILBOX_EMPTY);
-	txmailboxfree[2] = 2;
+	txmailboxfree[2] = true;
 }
