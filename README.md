@@ -28,5 +28,7 @@ In der Library wurden insgesamt fünf Error-Codes definiert die über eine Funkt
 > CAN_ERROR_FOR 
 
 Das Interface ist so aufgebaut, dass man mit Hilfe von Callbackfunktionen die verschiedenen Zustände verarbeiten kann.
+
 Für die bessere Handhabung der Callbacks ist in der Library eine Funktion vorgesehen die die Functionpointer mit der richtigen ID in eine Array speichert.
+
 Weiters kann neben dem typschen Versenden und Empfangen auch abgefragt werden welche Mailbox gerade frei ist.
