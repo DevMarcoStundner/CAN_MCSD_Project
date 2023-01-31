@@ -10,7 +10,6 @@
 #include <string.h>
 #include <stdio.h>
 
-static bool btnflag = false;
 static void controlloop(uint32_t looptime);
 static void btnhandler(bool longpress);
 
@@ -33,12 +32,14 @@ static void controlloop(uint32_t looptime) {
  * @params value (contains the current event)
  */
 static void btnhandler(bool longpress) {
+  static float pos = 0;
   static bool blink = false;
   if (longpress) {
     blink = !blink;
     cs_rot_setBlink(blink);
   } else {
-    btnflag = true;
+    pos += 10.0F;
+    cs_step_setPosition(pos);
   }
 }
 
@@ -66,14 +67,8 @@ int main()
   // enable event loop
   os_setcallback(controlloop);
 
-  float pos = 0;
 	while (1) {
     os_timeout(250e6, NULL);
-    if (btnflag) {
-      pos += 1.0F;
-      cs_step_setPosition(pos);
-      btnflag = false;
-    }
     ser_buf_TypeDef * buffer = ser_get_free_buf();
     if (buffer != NULL) {
       snprintf(buffer->buf, SER_CMDBUFLEN, "Encoder: %li\n", (int32_t)(cs_rot_getPos()*100.0));

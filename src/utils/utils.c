@@ -1,4 +1,5 @@
 #include "utils.h"
+#include <math.h>
 
 /**
  * @brief does the same as memset
@@ -12,6 +13,8 @@ void __attribute__((optimize("-fno-tree-loop-distribute-patterns"))) UT_byteset(
 }
 
 bool ut_fequal(float a, float b) {
+  a = fabsf(a);
+  b = fabsf(b);
   const float tolerance = 1e-4;
-  return (a-b < tolerance);
+  return (fabsf(a-b) < tolerance);
 }
