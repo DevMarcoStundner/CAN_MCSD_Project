@@ -11,15 +11,15 @@ The idea of the project is to devise your own individual embedded project using 
 Das kann Interface wurde so aufgebaut, dass man damit ein Package bestehend aus folgenden Instanzen versenden kann.
 
 > uint32_t id
- uint8_t *data
- uint8_t len
+> uint8_t *data
+> uint8_t len
 
 In der Library wurden insgesamt fünf Error-Codes definiert die über eine Funktion ausgelesen werden können.
 > CAN_ERROR_NONE 
- CAN_ERROR_EPV 
- CAN_ERROR_BOF 
- CAN_ERROR_STF 
- CAN_ERROR_FOR 
+> CAN_ERROR_EPV 
+> CAN_ERROR_BOF 
+> CAN_ERROR_STF 
+> CAN_ERROR_FOR 
 
 Das Interface ist so aufgebaut, dass man mit Hilfe von Callbackfunktionen die verschiedenen Zustände verarbeiten kann.
 Für die bessere Handhabung der Callbacks ist in der Library eine Funktion vorgesehen die die Functionpointer mit der richtigen ID in eine Array speichert.
