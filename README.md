@@ -11,7 +11,9 @@ The idea of the project is to devise your own individual embedded project using 
 Das kann Interface wurde so aufgebaut, dass man damit ein Package bestehend aus folgenden Instanzen versenden kann.
 
 > uint32_t id
+> 
 > uint8_t *data
+> 
 > uint8_t len
 
 In der Library wurden insgesamt fünf Error-Codes definiert die über eine Funktion ausgelesen werden können.
