@@ -18,9 +18,13 @@ Das kann Interface wurde so aufgebaut, dass man damit ein Package bestehend aus 
 
 In der Library wurden insgesamt fünf Error-Codes definiert die über eine Funktion ausgelesen werden können.
 > CAN_ERROR_NONE 
+> 
 > CAN_ERROR_EPV 
+> 
 > CAN_ERROR_BOF 
+> 
 > CAN_ERROR_STF 
+> 
 > CAN_ERROR_FOR 
 
 Das Interface ist so aufgebaut, dass man mit Hilfe von Callbackfunktionen die verschiedenen Zustände verarbeiten kann.
