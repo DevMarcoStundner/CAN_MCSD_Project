@@ -155,8 +155,7 @@ A total of five error codes were defined in the library, which can be read throu
 - `CAN_ERROR_NONE`
 - `CAN_ERROR_EPV`
 - `CAN_ERROR_BOF`
-- `CAN_ERROR_STF`
-- `CAN_ERROR_FOR `
+- `CAN_ERROR_ELSE`
 
 The interface is structured in such a way that the various states can be processed using callback functions. 
 To facilitate the handling of callbacks, a function is provided in the library to store the function pointers with the correct ID in an array. 
