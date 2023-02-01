@@ -25,9 +25,9 @@ void can_ll_Init() {
 
   // enable silent loopback in case of no can shield
 #if !DEF_HAVE_CAN
-  CAN1->BTR |= CAN_BTR_LBKM | CAN_BTR_SILM;
-  //CAN1->BTR |= CAN_BTR_LBKM;
+  //CAN1->BTR |= CAN_BTR_LBKM | CAN_BTR_SILM;
 #endif
+  CAN1->BTR |= CAN_BTR_LBKM;
 
   CAN1->MCR |= CAN_MCR_ABOM;
 
@@ -125,7 +125,7 @@ can_ll_error_t can_ll_AddTxMessage(can_ll_msgheader_t *header, uint8_t *data, ca
 
 can_ll_error_t can_ll_GetRxMessage(can_ll_rxfifo_t fifo, can_ll_msgheader_t *header, uint8_t *data) {
   CAN_FIFOMailBox_TypeDef * mailbox;
-  uint32_t * rfr;
+  volatile uint32_t * rfr;
   if (fifo == CAN_LL_RXFIFO0) {
     mailbox = CAN1->sFIFOMailBox + 0;
     rfr = &CAN1->RF0R;

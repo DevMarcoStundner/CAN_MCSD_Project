@@ -127,6 +127,22 @@ CAN Shield:
 > [Diagram Image 
 Link](//www.plantuml.com/plantuml/png/PP0n2uCm58Jt_8fNzmfc52bQwT315gnE8YAQqb9DIen3AVtlVGdDyEWKxlZktf5qCRqswponZRc9MK0dbHGTk-eUHR1NlHuX2k3Dcb8X-eA37DGeTCkQIrL0X6-UdI2VxiF3gW-DSXjr92UaLOKoIjj4Koz2mr4-LzF2TWV_fwY1aANyVVUw89r252HX61A2jn03IaQzn5VpNxNpqFHxlMdRtF3pQjpo6Egih5Wgv8WV-WK0)
 
+## Runtime
+The runtime code handles the initialization as well as the recurring control 
+loop handler calls. The whole system is event driven, possible can errors are 
+reported on the serial link.
+
+## Encoder
+The encoder library provides an interface to read the encoder position, which is 
+detected in hardware with the help of a timer. Furthermore, the library allows 
+to set a indicated position on the LED ring, with an optional blink mode.
+
+## Stepper
+The stepper library provides an interface to move the stepper motor to a 
+designated position. The movement itself is made asynchroneously with the help 
+of a timer. A function to get the current position(also during movement, with 
+reduced accuracy) is also available.
+
 ## CAN Interface
 
 Das kann Interface wurde so aufgebaut, dass man damit ein Package bestehend aus folgenden Instanzen versenden kann.

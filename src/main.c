@@ -1,13 +1,7 @@
 // change those depending on environment
 #define DEF_HAVE_ENCODER 1
 #define DEF_HAVE_STEPPER 1
-#define DEF_HAVE_CAN 0
-
-// dont touch this
-#if !DEF_HAVE_CAN
-#define DEF_HAVE_ENCODER 1
-#define DEF_HAVE_STEPPER 1
-#endif
+#define DEF_HAVE_CAN 1
 
 #define CANID_ROT_POS 20
 #define CANID_STEP_POS 10
@@ -83,7 +77,6 @@ static void btnhandler(bool longpress) {
     cs_rot_setBlink(inmenu);
     if (!inmenu) {
       pos = cs_rot_getPos();
-      uint8_t data[8];
       // send can position
       can_send_pkg(CANID_ROT_POS, (uint8_t*)&pos, 4, NULL);
     }
@@ -96,9 +89,6 @@ static void btnhandler(bool longpress) {
 static uint8_t serhelp(char * outbuf, char * const cmdbuf __attribute__((unused))) {
   sprintf(outbuf, "Command format: #<c>,arg,arg\\n  c->command");
   return 0;
-}
-
-static void cantxcallback(can_ll_txmbx_t mailbox) {
 }
 
 static void canrxcallback(can_pkg_t * pkg) {
@@ -152,8 +142,16 @@ int main()
   // enable event loop
   os_setcallback(controlloop);
 
-	while (1) {
-    os_timeout(250e6, NULL);
+  while (1) {
+    if (can_get_errors() != 0) {
+      ser_buf_TypeDef * buffer = ser_get_free_buf();
+      if (buffer != NULL) {
+        snprintf(buffer->buf, SER_CMDBUFLEN, "CAN ERRORS: %i\n", can_get_errors());
+        ser_txdata(buffer);
+      }
+      os_timeout(2000e6, NULL);
+    }
+
   }
 	return 0;
 }

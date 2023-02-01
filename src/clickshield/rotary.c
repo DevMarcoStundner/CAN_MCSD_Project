@@ -26,8 +26,8 @@
 #define ROTRESET_PIN LL_GPIO_PIN_15
 #define ROTRESET_PORT GPIOC
 
-const static uint32_t maxcnt = 5;
-const static uint32_t blinkdelay = 125;
+static const uint32_t maxcnt = 5;
+static const uint32_t blinkdelay = 125;
 
 static bool blink_enable = false;
 static uint16_t blinkmask = 0xFFFF;

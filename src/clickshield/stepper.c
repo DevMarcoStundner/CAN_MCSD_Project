@@ -28,8 +28,8 @@ typedef enum {
 
 static volatile control_status_t control_status = RUN_IDLE;
 
-const static uint16_t maxreps = 64;
-const static float fullsteps = 2048;
+static const uint16_t maxreps = 64;
+static const float fullsteps = 2048;
 
 static cs_step_mode_t stepmode = CS_STEP_FULL;
 static volatile cs_step_mode_t newmode = CS_STEP_FULL;
@@ -167,9 +167,9 @@ void cs_step_handler(uint32_t time) {
     // stepper is running
     // send intermediate position
     static uint32_t prevtime = 0;
-    if (prevtime+10 < time) {
+    if (prevtime+50 < time) {
       prevtime = time;
-      tmppos = newpos - (float)stepcnt/(float)(stepmode*fullsteps);
+      tmppos = curpos - stepcnt/(float)(stepmode*fullsteps);
     }
   }
   prevstatus = control_status;

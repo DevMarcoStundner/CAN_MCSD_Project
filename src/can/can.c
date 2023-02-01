@@ -58,7 +58,7 @@ void can_init() {
 /** brief Function can_handle() will do all periodic tasks that CAN needs
  *
  */
-void can_handle(uint32_t time) {
+void can_handle(uint32_t time __attribute__((unused))) {
 	for(int i = 0; i<3; i++) {
 		if(txmailboxfree[i] == true) {
 			txmailboxfree[i] = false;
@@ -121,7 +121,7 @@ int can_register_id(uint32_t id,  void (*callback)(can_pkg_t *pkg)) {
  */
 void _can_receive_pkg() {
   static can_ll_msgheader_t	canrx;
-	struct can_pkg_t pkg = {NULL};
+	struct can_pkg_t pkg = {0};
 
 	//HAL_CAN_GetRxMessage(&hcan1, CAN_FILTER_FIFO0, &canrx, pkg->data);
 	can_ll_GetRxMessage(CAN_LL_RXFIFO0, &canrx, pkg.data);
