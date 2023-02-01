@@ -145,21 +145,19 @@ reduced accuracy) is also available.
 
 ## CAN Interface
 
-Das kann Interface wurde so aufgebaut, dass man damit ein Package bestehend aus folgenden Instanzen versenden kann.
+The interface was designed to allow the sending of a package consisting of the following instances.
 
 - `uint32_t id`
 - `uint8_t *data`
 - `uint8_t len`
 
-In der Library wurden insgesamt fünf Error-Codes definiert die über eine Funktion ausgelesen werden können.
+A total of five error codes were defined in the library, which can be read through a function.
 - `CAN_ERROR_NONE`
 - `CAN_ERROR_EPV`
 - `CAN_ERROR_BOF`
 - `CAN_ERROR_STF`
 - `CAN_ERROR_FOR `
 
-Das Interface ist so aufgebaut, dass man mit Hilfe von Callbackfunktionen die verschiedenen Zustände verarbeiten kann.
-Für die bessere Handhabung der Callbacks ist in der Library eine Funktion 
-vorgesehen die die Functionpointer mit der richtigen ID in eine Array speichert.
-Weiters kann neben dem typschen Versenden und Empfangen auch abgefragt werden 
-welche Mailbox gerade frei ist.
+The interface is structured in such a way that the various states can be processed using callback functions. 
+To facilitate the handling of callbacks, a function is provided in the library to store the function pointers with the correct ID in an array. 
+Furthermore, in addition to the typical sending and receiving, it is also possible to query which mailbox is currently available.
