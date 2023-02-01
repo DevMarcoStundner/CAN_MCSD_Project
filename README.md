@@ -64,18 +64,10 @@ In contrast to the above, it allows for multiple simultaneous timers (set via
 `OS_MAX_TIMERS`), but has a fairly low accuracy (+- 1ms) as it uses the sytick 
 timer.
 
-# Utility functions
-## ADC/DAC performace
-The ADC and DAC work within +- 3 LSB from 800 to 4000 counts, below 800 the DAC 
-saturates and does not reach zero.
-
 # Serial Console
 ## Format specification
 ## Implemented commands
 - h -> returns help
-- a -> adds arg 1 and 2 as integers
-- m -> set dac to arg 1 value, return adc measurement
-- b -> return button short presses. Value is reset via a longpress
 
 ## Implementation notes
 For both RX and TX, DMA instance 1 will be used.
@@ -95,6 +87,19 @@ with the command `picocom -b 115200 --parity n --omap crlf --imap lfcrlf --echo
 /dev/ttyUSB0`.
 
 # Project
+The idea of the project is to devise your own individual embedded project using 
+the evaluation board and one or a few sensors and actuators
+
+The overall project consists of two stm32l4 controllers, connected via a
+CAN-shield on either side. One uC is connected to a stepper motor, the other uC 
+is connected to a rotary encoder.
+
+The user shall be able to request a change of stepper position via the encoder, 
+which shall be transmitted to the stepper-uC and executed. The current position 
+and movement state shall be sent back to the uC for display to the user.
+
+<img src="./comp_diagram.jpg">
+
 ## Click shield connections
 Rotary encoder:
 - A - PA1 - TIM2CH1 - AF1
@@ -118,3 +123,27 @@ Stepper Motor:
 CAN Shield:
 - RX - PA11 - AF9
 - TX - PA12 - AF9
+
+> [Diagram Image 
+Link](//www.plantuml.com/plantuml/png/PP0n2uCm58Jt_8fNzmfc52bQwT315gnE8YAQqb9DIen3AVtlVGdDyEWKxlZktf5qCRqswponZRc9MK0dbHGTk-eUHR1NlHuX2k3Dcb8X-eA37DGeTCkQIrL0X6-UdI2VxiF3gW-DSXjr92UaLOKoIjj4Koz2mr4-LzF2TWV_fwY1aANyVVUw89r252HX61A2jn03IaQzn5VpNxNpqFHxlMdRtF3pQjpo6Egih5Wgv8WV-WK0)
+
+## CAN Interface
+
+Das kann Interface wurde so aufgebaut, dass man damit ein Package bestehend aus folgenden Instanzen versenden kann.
+
+- `uint32_t id`
+- `uint8_t *data`
+- `uint8_t len`
+
+In der Library wurden insgesamt fünf Error-Codes definiert die über eine Funktion ausgelesen werden können.
+- `CAN_ERROR_NONE`
+- `CAN_ERROR_EPV`
+- `CAN_ERROR_BOF`
+- `CAN_ERROR_STF`
+- `CAN_ERROR_FOR `
+
+Das Interface ist so aufgebaut, dass man mit Hilfe von Callbackfunktionen die verschiedenen Zustände verarbeiten kann.
+Für die bessere Handhabung der Callbacks ist in der Library eine Funktion 
+vorgesehen die die Functionpointer mit der richtigen ID in eine Array speichert.
+Weiters kann neben dem typschen Versenden und Empfangen auch abgefragt werden 
+welche Mailbox gerade frei ist.
