@@ -6,17 +6,21 @@
  */
 
 
-#include "main.h"
 #include "can.h"
+
+#include "can_ll.h"
+
+#include "stm32l432xx.h"
+#include "libll/stm32l4xx_ll_bus.h"
+
+#include "libll/stm32l4xx_ll_gpio.h"
 
 #define REG_LEN 20
 
-static CAN_HandleTypeDef   	hcan1;
-static CAN_FilterTypeDef    canfilter;
-static CAN_TxHeaderTypeDef	cantx;
-static CAN_RxHeaderTypeDef 	canrx;
-static volatile bool txmailboxfree[3] {false};
-static void (* volatile txcallbacks[3])(uint32_t mailbox) = {NULL};
+//static CAN_TxHeaderTypeDef	cantx;
+//static CAN_RxHeaderTypeDef 	canrx;
+static volatile bool txmailboxfree[3] = {false};
+static void (* volatile txcallbacks[3])(can_ll_txmbx_t mailbox) = {NULL};
 
 typedef struct rxcallback_t rxcallback_t;
 struct rxcallback_t {
@@ -24,25 +28,23 @@ struct rxcallback_t {
 	void(*rxcb)(can_pkg_t *pkg);
 };
 
-static volatile struct rxcallback_t rxcallbackarray[REG_LEN];
+static volatile struct rxcallback_t rxcallbacks[REG_LEN];
 
-/**
-  * @brief  CAN Status structures definition private
-  */
-typedef enum
-{
-  CAN_OK      			 = 0x00,
-  CAN_ERROR				 = 0x09,
-  CAN_FILTER_ERROR   	 = 0x01,
-  CAN_START_ERROR    	 = 0x06,
-  CAN_ACTIVATE_IT_ERROR  = 0x03,
-  CAN_MAILBOX_ERROR		 = 0x07,
-  CAN_MSG_ERROR			 = 0x05,
-  CAN_EPV_ERROR			 = 0x02U,
-  CAN_BOF_ERROR			 = 0x04U,
-  CAN_STF_ERROR			 = 0x08U,
-  CAN_FOR_ERROR			 = 0x10U
-} CAN_Status;
+void CAN1_TX_IRQHandler() {
+  can_ll_DisableIT_TXEMPTY();
+  if (can_ll_IsFlagSet_TxRqComplete(CAN_LL_TXMAILBOX0)) {
+    can_ll_ClearFlag_TxRqComplete(CAN_LL_TXMAILBOX0);
+    txmailboxfree[0] = true;
+  }
+  if (can_ll_IsFlagSet_TxRqComplete(CAN_LL_TXMAILBOX1)) {
+    can_ll_ClearFlag_TxRqComplete(CAN_LL_TXMAILBOX1);
+    txmailboxfree[1] = true;
+  }
+  if (can_ll_IsFlagSet_TxRqComplete(CAN_LL_TXMAILBOX2)) {
+    can_ll_ClearFlag_TxRqComplete(CAN_LL_TXMAILBOX2);
+    txmailboxfree[2] = true;
+  }
+}
 
 
 /*
@@ -52,59 +54,58 @@ void can_init()
 {
 	for(int i = 0; i<=REG_LEN; i++)
 	{
-		rxcallbackarray[i].id = 0;
-		rxcallbackarray[i].rxcb = NULL;
+		rxcallbacks[i].id = 0;
+		rxcallbacks[i].rxcb = NULL;
 	}
 
-	cantx.StdId 					= 0x00;
-	cantx.ExtId 					= 0x00;
-	cantx.IDE 						= CAN_ID_STD;
-	cantx.RTR 						= CAN_RTR_DATA;
-	cantx.DLC 						= 8;
-	cantx.TransmitGlobalTime		= DISABLE;
 
-	canfilter.FilterMode 				= CAN_FILTERMODE_IDMASK;
-	canfilter.FilterFIFOAssignment 		= CAN_FILTER_FIFO0;
-	canfilter.FilterBank 				= 0;
-	canfilter.FilterScale 				= CAN_FILTERSCALE_32BIT;
-	canfilter.FilterIdHigh 				= 0x000;
-	canfilter.FilterIdLow 				= 0x000;
-	canfilter.FilterMaskIdHigh			= 0x000;
-	canfilter.FilterMaskIdLow 			= 0x000;
-	canfilter.SlaveStartFilterBank 		= 14;
-	canfilter.FilterActivation 			= ENABLE;
+  // default
+	//canfilter.FilterMode 				= CAN_FILTERMODE_IDMASK;
+	//canfilter.FilterFIFOAssignment 		= CAN_FILTER_FIFO0;
+	//canfilter.FilterBank 				= 0;
+	//canfilter.FilterScale 				= CAN_FILTERSCALE_32BIT;
+	//canfilter.FilterIdHigh 				= 0x000;
+	//canfilter.FilterIdLow 				= 0x000;
+	//canfilter.FilterMaskIdHigh			= 0x000;
+	//canfilter.FilterMaskIdLow 			= 0x000;
+	//canfilter.SlaveStartFilterBank 		= 14;
 
-	HAL_CAN_ConfigFilter(&hcan1, &canfilter);
-	HAL_CAN_Start(&hcan1);
-	HAL_CAN_ActivateNotification(&hcan1, CAN_IT_TX_MAILBOX_EMPTY);
+  can_ll_Init();
+
+  // should not be needed
+	//canfilter.FilterActivation 			= ENABLE;
+
+  can_ll_Start();
+
+
+	//HAL_CAN_ActivateNotification(&hcan1, CAN_IT_TX_MAILBOX_EMPTY);
+  can_ll_EnableIT_TXEMPTY();
 }
 
 
 /** brief Function can_handle() will do all periodic tasks that CAN needs
  *
  */
-void can_handle()
+void can_handle(uint32_t time)
 {
-	for(int i = 0; i<=2; i++)
+	for(int i = 0; i<3; i++)
 	{
 		if(txmailboxfree[i] == true)
 		{
+			txmailboxfree[i] = false;
 			if(txcallbacks[i] != NULL)
 			{
 				txcallbacks[i](i);
 				txcallbacks[i] = NULL;
 			}
-			txmailboxfree[i] = false;
 		}
 	}
-	HAL_CAN_ActivateNotification(&hcan1, CAN_IT_TX_MAILBOX_EMPTY);
-	if(HAL_CAN_GetRxFifoFillLevel(&hcan1, CAN_RX_FIFO0) != 0)
-	{
-		while(HAL_CAN_GetRxFifoFillLevel(&hcan1, CAN_RX_FIFO0) != 0)
-		{
-			_can_receive_pkg();
-		}
-	}
+	//HAL_CAN_ActivateNotification(&hcan1, CAN_IT_TX_MAILBOX_EMPTY);
+  can_ll_EnableIT_TXEMPTY();
+  //while(HAL_CAN_GetRxFifoFillLevel(&hcan1, CAN_RX_FIFO0) != 0)
+  while(can_ll_GetRxFifoLevel(CAN_LL_RXFIFO0) > 0) {
+    _can_receive_pkg();
+  }
 
 
 }
@@ -115,12 +116,14 @@ void can_handle()
  *  param callback is the func pointer to the callback that should be called
  *  returns -1 on error and mailbox id on success
  */
-int can_send_pkg(uint32_t pkgid, uint8_t *data, uint8_t len, void (*callback)(uint32_t mailbox))
+int can_send_pkg(uint32_t pkgid, uint8_t *data, uint8_t len, void (*callback)(can_ll_txmbx_t mailbox))
 {
-	uint32_t mailboxid;
+  static can_ll_msgheader_t	cantx;
+	can_ll_txmbx_t mailboxid;
 	cantx.StdId = pkgid;
 	cantx.DLC = len;
-	if (HAL_CAN_AddTxMessage(&hcan1, &cantx, data, &mailboxid) != HAL_OK)
+	//if (HAL_CAN_AddTxMessage(&hcan1, &cantx, data, &mailboxid) != HAL_OK)
+	if (can_ll_AddTxMessage(&cantx, data, &mailboxid) != CAN_LL_OK)
 	{
 		return -1;
 	}
@@ -140,12 +143,12 @@ int can_register_id(uint32_t id,  void (*callback)(can_pkg_t *pkg))
 		return 1;
 	}
 
-	for(int i = 0; i<=REG_LEN; i++)
+	for(int i = 0; i<REG_LEN; i++)
 	{
-		if(rxcallbackarray[i].id == 0)
+		if(rxcallbacks[i].id == 0)
 		{
-			rxcallbackarray[i].id = id;
-			rxcallbackarray[i].rxcb = callback;
+			rxcallbacks[i].id = id;
+			rxcallbacks[i].rxcb = callback;
 			return 0;
 		}
 	}
@@ -159,16 +162,20 @@ int can_register_id(uint32_t id,  void (*callback)(can_pkg_t *pkg))
  */
 void _can_receive_pkg()
 {
-	struct can_pkg_t *pkg = {NULL};
+  static can_ll_msgheader_t	canrx;
+	struct can_pkg_t pkg = {NULL};
 
+	//HAL_CAN_GetRxMessage(&hcan1, CAN_FILTER_FIFO0, &canrx, pkg->data);
+	can_ll_GetRxMessage(CAN_LL_RXFIFO0, &canrx, pkg.data);
 
-	HAL_CAN_GetRxMessage(&hcan1, CAN_FILTER_FIFO0, &canrx, pkg->data);
-
-	pkg->id = canrx.StdId;
-	pkg->len = canrx.DLC;
-	rxcallbackarray[canrx.StdId].rxcb(pkg);
-	rxcallbackarray[canrx.StdId].id = 0;
-
+	pkg.id = canrx.StdId;
+	pkg.len = canrx.DLC;
+  for (int i=0; i<REG_LEN; i++) {
+    if (rxcallbacks[i].id == pkg.id) {
+      rxcallbacks[i].rxcb(&pkg);
+      break;
+    }
+  }
 }
 
 /** brief Function can_get_free_tx() will return the mailboxes that are ready for transmit
@@ -176,7 +183,8 @@ void _can_receive_pkg()
  */
 uint32_t can_get_free_tx()
 {
-	uint32_t fill = HAL_CAN_GetTxMailboxesFreeLevel(&hcan1);
+	//uint32_t fill = HAL_CAN_GetTxMailboxesFreeLevel(&hcan1);
+	uint32_t fill = 3-can_ll_GetTxFifoLevel();
 	return fill;
 }
 
@@ -187,33 +195,15 @@ int can_get_errors()
 {
 	int errval = CAN_ERROR_NONE;
 
-	if(hcan1.ErrorCode == CAN_OK){return CAN_ERROR_NONE;}
-	if(hcan1.ErrorCode == CAN_EPV_ERROR){errval |= CAN_ERROR_EPV;} //ERROR Passive
-	if(hcan1.ErrorCode == CAN_BOF_ERROR){errval |= CAN_ERROR_BOF;} //ERROR Bus-off
-	if(hcan1.ErrorCode == CAN_STF_ERROR){errval |= CAN_ERROR_STF;} //ERROR Stuff
-	if(hcan1.ErrorCode == CAN_FOR_ERROR){errval |= CAN_ERROR_FOR;} //ERROR Form
+	//if(hcan1.ErrorCode == CAN_OK){return CAN_ERROR_NONE;}
+	//if(hcan1.ErrorCode == CAN_EPV_ERROR){errval |= CAN_ERROR_EPV;} //ERROR Passive
+	//if(hcan1.ErrorCode == CAN_BOF_ERROR){errval |= CAN_ERROR_BOF;} //ERROR Bus-off
+	//if(hcan1.ErrorCode == CAN_STF_ERROR){errval |= CAN_ERROR_STF;} //ERROR Stuff
+	//if(hcan1.ErrorCode == CAN_FOR_ERROR){errval |= CAN_ERROR_FOR;} //ERROR Form
+  if (CAN1->ESR & CAN_ESR_EPVF) {errval |= CAN_ERROR_EPV;}
+  if (CAN1->ESR & CAN_ESR_BOFF) {errval |= CAN_ERROR_BOF;}
+  if (CAN1->ESR & CAN_ESR_LEC_Msk) {errval |= CAN1->ESR>>CAN_ESR_LEC_Pos;}
 
 	return errval;
 
-}
-
-void HAL_CAN_TxMailbox0CompleteCallback(CAN_HandleTypeDef *hcan)
-{
-	UNUSED(hcan);
-	HAL_CAN_DeactivateNotification(&hcan1, CAN_IT_TX_MAILBOX_EMPTY);
-	txmailboxfree[0] = true;
-}
-
-void HAL_CAN_TxMailbox1CompleteCallback(CAN_HandleTypeDef *hcan)
-{
-	UNUSED(hcan);
-	HAL_CAN_DeactivateNotification(&hcan1, CAN_IT_TX_MAILBOX_EMPTY);
-	txmailboxfree[1] = true;
-}
-
-void HAL_CAN_TxMailbox2CompleteCallback(CAN_HandleTypeDef *hcan)
-{
-	UNUSED(hcan);
-	HAL_CAN_DeactivateNotification(&hcan1, CAN_IT_TX_MAILBOX_EMPTY);
-	txmailboxfree[2] = true;
 }
