@@ -5,6 +5,7 @@
 #include <stdbool.h>
 
 void cs_rot_init();
+void cs_rot_reset();
 void cs_rot_handle(uint32_t time);
 float cs_rot_getPos();
 void cs_rot_setIndicator(float pos);

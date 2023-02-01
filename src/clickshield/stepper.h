@@ -15,5 +15,7 @@ void cs_step_init();
 void cs_step_setmode(cs_step_mode_t mode);
 void cs_step_handler(uint32_t time);
 void cs_step_setPosition(float pos);
+float cs_step_getPosition();
+bool cs_step_getRunning();
 
 #endif

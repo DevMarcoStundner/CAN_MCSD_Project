@@ -141,6 +141,10 @@ void cs_rot_init() {
   LL_TIM_EnableCounter(TIM2);
 }
 
+void cs_rot_reset() {
+  position = 0;
+}
+
 void cs_rot_handle(uint32_t time) {
   // indicator updates
   static uint32_t lasttime = 0;

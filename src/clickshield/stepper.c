@@ -39,6 +39,7 @@ static volatile bool presetdone = false;
 static volatile uint32_t interpos = 0;
 static float curpos = 0;
 static volatile float newpos = 0;
+static volatile float tmppos = 0;
 
 static void step_move(float pos);
 
@@ -139,13 +140,11 @@ void cs_step_init() {
 
 void cs_step_handler(uint32_t time) {
   static control_status_t prevstatus = RUN_IDLE;
-  static uint32_t previnterstep = 0;
 
   if (control_status == RUN_IDLE) {
     if (prevstatus == RUN_END || prevstatus == RUN_LATCH) {
       // move finished
-      // send move finished
-      // send new position
+      tmppos = curpos;
     }
     if (stepmode != newmode) {
       if (newmode == CS_STEP_FULL || newmode == CS_STEP_QUARTER) {
@@ -163,19 +162,21 @@ void cs_step_handler(uint32_t time) {
     if (!ut_fequal(curpos, newpos)) {
       // new move requested
       step_move(newpos);
-      // send move started
     }
   } else {
     // stepper is running
     // send intermediate position
-    float tmppos = newpos - (float)stepcnt/(float)(stepmode*fullsteps);
     static uint32_t prevtime = 0;
-    if (prevtime+100 < time) {
+    if (prevtime+10 < time) {
       prevtime = time;
+      tmppos = newpos - (float)stepcnt/(float)(stepmode*fullsteps);
     }
   }
-  previnterstep = stepcnt;
   prevstatus = control_status;
+}
+
+bool cs_step_getRunning() {
+  return control_status != RUN_IDLE;
 }
 
 void cs_step_setmode(cs_step_mode_t mode) {
@@ -184,6 +185,10 @@ void cs_step_setmode(cs_step_mode_t mode) {
 
 void cs_step_setPosition(float pos) {
   newpos = pos;
+}
+
+float cs_step_getPosition() {
+  return tmppos;
 }
 
 static void step_move(float pos) {

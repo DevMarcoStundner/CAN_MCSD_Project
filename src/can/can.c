@@ -17,8 +17,6 @@
 
 #define REG_LEN 20
 
-//static CAN_TxHeaderTypeDef	cantx;
-//static CAN_RxHeaderTypeDef 	canrx;
 static volatile bool txmailboxfree[3] = {false};
 static void (* volatile txcallbacks[3])(can_ll_txmbx_t mailbox) = {NULL};
 
@@ -31,7 +29,6 @@ struct rxcallback_t {
 static volatile struct rxcallback_t rxcallbacks[REG_LEN];
 
 void CAN1_TX_IRQHandler() {
-  can_ll_DisableIT_TXEMPTY();
   if (can_ll_IsFlagSet_TxRqComplete(CAN_LL_TXMAILBOX0)) {
     can_ll_ClearFlag_TxRqComplete(CAN_LL_TXMAILBOX0);
     txmailboxfree[0] = true;
@@ -50,35 +47,10 @@ void CAN1_TX_IRQHandler() {
 /*
  * brief Function can_init() will init CAN
  */
-void can_init()
-{
-	for(int i = 0; i<=REG_LEN; i++)
-	{
-		rxcallbacks[i].id = 0;
-		rxcallbacks[i].rxcb = NULL;
-	}
-
-
-  // default
-	//canfilter.FilterMode 				= CAN_FILTERMODE_IDMASK;
-	//canfilter.FilterFIFOAssignment 		= CAN_FILTER_FIFO0;
-	//canfilter.FilterBank 				= 0;
-	//canfilter.FilterScale 				= CAN_FILTERSCALE_32BIT;
-	//canfilter.FilterIdHigh 				= 0x000;
-	//canfilter.FilterIdLow 				= 0x000;
-	//canfilter.FilterMaskIdHigh			= 0x000;
-	//canfilter.FilterMaskIdLow 			= 0x000;
-	//canfilter.SlaveStartFilterBank 		= 14;
-
+void can_init() {
   can_ll_Init();
-
-  // should not be needed
-	//canfilter.FilterActivation 			= ENABLE;
-
   can_ll_Start();
 
-
-	//HAL_CAN_ActivateNotification(&hcan1, CAN_IT_TX_MAILBOX_EMPTY);
   can_ll_EnableIT_TXEMPTY();
 }
 
@@ -86,23 +58,17 @@ void can_init()
 /** brief Function can_handle() will do all periodic tasks that CAN needs
  *
  */
-void can_handle(uint32_t time)
-{
-	for(int i = 0; i<3; i++)
-	{
-		if(txmailboxfree[i] == true)
-		{
+void can_handle(uint32_t time) {
+	for(int i = 0; i<3; i++) {
+		if(txmailboxfree[i] == true) {
 			txmailboxfree[i] = false;
-			if(txcallbacks[i] != NULL)
-			{
-				txcallbacks[i](i);
+			if(txcallbacks[i] != NULL) {
+				//txcallbacks[i](i);
 				txcallbacks[i] = NULL;
 			}
 		}
 	}
-	//HAL_CAN_ActivateNotification(&hcan1, CAN_IT_TX_MAILBOX_EMPTY);
   can_ll_EnableIT_TXEMPTY();
-  //while(HAL_CAN_GetRxFifoFillLevel(&hcan1, CAN_RX_FIFO0) != 0)
   while(can_ll_GetRxFifoLevel(CAN_LL_RXFIFO0) > 0) {
     _can_receive_pkg();
   }
@@ -116,15 +82,12 @@ void can_handle(uint32_t time)
  *  param callback is the func pointer to the callback that should be called
  *  returns -1 on error and mailbox id on success
  */
-int can_send_pkg(uint32_t pkgid, uint8_t *data, uint8_t len, void (*callback)(can_ll_txmbx_t mailbox))
-{
+int can_send_pkg(uint32_t pkgid, uint8_t *data, uint8_t len, void (*callback)(can_ll_txmbx_t mailbox)) {
   static can_ll_msgheader_t	cantx;
 	can_ll_txmbx_t mailboxid;
 	cantx.StdId = pkgid;
 	cantx.DLC = len;
-	//if (HAL_CAN_AddTxMessage(&hcan1, &cantx, data, &mailboxid) != HAL_OK)
-	if (can_ll_AddTxMessage(&cantx, data, &mailboxid) != CAN_LL_OK)
-	{
+	if (can_ll_AddTxMessage(&cantx, data, &mailboxid) != CAN_LL_OK) {
 		return -1;
 	}
 	txcallbacks[mailboxid] = callback;
@@ -136,17 +99,13 @@ int can_send_pkg(uint32_t pkgid, uint8_t *data, uint8_t len, void (*callback)(ca
  *  param callback is the func pointer to the callback that should be called
  *  returns 0 if okay retuns 1 if no id is assigned or wrong id is given
  */
-int can_register_id(uint32_t id,  void (*callback)(can_pkg_t *pkg))
-{
-	if(id == 0)
-	{
+int can_register_id(uint32_t id,  void (*callback)(can_pkg_t *pkg)) {
+	if(id == 0) {
 		return 1;
 	}
 
-	for(int i = 0; i<REG_LEN; i++)
-	{
-		if(rxcallbacks[i].id == 0)
-		{
+	for(int i = 0; i<REG_LEN; i++) {
+		if(rxcallbacks[i].id == 0) {
 			rxcallbacks[i].id = id;
 			rxcallbacks[i].rxcb = callback;
 			return 0;
@@ -160,8 +119,7 @@ int can_register_id(uint32_t id,  void (*callback)(can_pkg_t *pkg))
 /** brief Function _can_receive_pkg() will receive the data and calls the associated callback to the id
  *
  */
-void _can_receive_pkg()
-{
+void _can_receive_pkg() {
   static can_ll_msgheader_t	canrx;
 	struct can_pkg_t pkg = {NULL};
 
@@ -181,8 +139,7 @@ void _can_receive_pkg()
 /** brief Function can_get_free_tx() will return the mailboxes that are ready for transmit
  * returns number of free mailboxes
  */
-uint32_t can_get_free_tx()
-{
+uint32_t can_get_free_tx() {
 	//uint32_t fill = HAL_CAN_GetTxMailboxesFreeLevel(&hcan1);
 	uint32_t fill = 3-can_ll_GetTxFifoLevel();
 	return fill;
@@ -191,8 +148,7 @@ uint32_t can_get_free_tx()
 /** brief Function can_get_errors() will return public error state
  * 	returns the error that occurs
  */
-int can_get_errors()
-{
+int can_get_errors() {
 	int errval = CAN_ERROR_NONE;
 
 	//if(hcan1.ErrorCode == CAN_OK){return CAN_ERROR_NONE;}

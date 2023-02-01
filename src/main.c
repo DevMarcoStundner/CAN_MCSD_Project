@@ -9,6 +9,10 @@
 #define DEF_HAVE_STEPPER 1
 #endif
 
+#define CANID_ROT_POS 20
+#define CANID_STEP_POS 10
+#define CANID_STEP_STATE 11
+
 #include "stm32l432xx.h"
 
 #include "os/os.h"
@@ -30,14 +34,37 @@ static void btnhandler(bool longpress);
 
 static uint8_t serhelp(char * outbuf, char * const cmdbuf __attribute__((unused)));
 
+static volatile bool inmenu = false;
+static volatile float steppos = 0;
+
 /**
  * @brief control loop callback for os tick
  * @params looptime contains the tick count value
  */
 static void controlloop(uint32_t looptime) {
+#if DEF_HAVE_ENCODER
+  if (inmenu) {
+    cs_rot_setIndicator(cs_rot_getPos());
+  } else {
+    cs_rot_setIndicator(steppos);
+  }
   cs_rot_handle(looptime);
-  cs_rot_setIndicator(cs_rot_getPos());
+#endif
+#if DEF_HAVE_STEPPER
+  static int prevstepstate = 0;
+  if (cs_step_getRunning() != prevstepstate) {
+    prevstepstate = cs_step_getRunning();
+    can_send_pkg(CANID_STEP_STATE, (uint8_t*)&prevstepstate, 4, NULL);
+  }
   cs_step_handler(looptime);
+  static uint32_t prevtime = 0;
+  static float prevpos = 0;
+  if (prevtime+100 < looptime) {
+    prevtime = looptime;
+    prevpos = cs_step_getPosition();
+    can_send_pkg(CANID_STEP_POS, (uint8_t*)&prevpos, 4, NULL);
+  }
+#endif
   can_handle(looptime);
   CS_LoopHandler(looptime);
   ser_handle();
@@ -49,13 +76,17 @@ static void controlloop(uint32_t looptime) {
  */
 static void btnhandler(bool longpress) {
   static float pos = 0;
-  static bool blink = false;
   if (longpress) {
-    blink = !blink;
-    cs_rot_setBlink(blink);
+    cs_rot_reset();
   } else {
-    pos += 10.0F;
-    cs_step_setPosition(pos);
+    inmenu = !inmenu;
+    cs_rot_setBlink(inmenu);
+    if (!inmenu) {
+      pos = cs_rot_getPos();
+      uint8_t data[8];
+      // send can position
+      can_send_pkg(CANID_ROT_POS, (uint8_t*)&pos, 4, NULL);
+    }
   }
 }
 
@@ -68,14 +99,28 @@ static uint8_t serhelp(char * outbuf, char * const cmdbuf __attribute__((unused)
 }
 
 static void cantxcallback(can_ll_txmbx_t mailbox) {
-  LL_GPIO_TogglePin(GPIOA, LL_GPIO_PIN_8);
 }
 
 static void canrxcallback(can_pkg_t * pkg) {
-  ser_buf_TypeDef * buffer = ser_get_free_buf();
-  if (buffer != NULL) {
-    snprintf(buffer->buf, SER_CMDBUFLEN, "Got PKG: id-%lu, len-%u\n", pkg->id, pkg->len);
-    ser_txdata(buffer);
+  float scratchf = 0;
+  int scratchi = 0;
+  switch(pkg->id) {
+    case CANID_ROT_POS:
+      scratchf = *(float*)pkg->data;
+      cs_step_setPosition(scratchf);
+      break;
+    case CANID_STEP_POS:
+      scratchf = *(float*)pkg->data;
+      steppos = scratchf;
+      break;
+    case CANID_STEP_STATE:
+      scratchi = *(int*)pkg->data;
+      if (scratchi == 0) {
+        LL_GPIO_ResetOutputPin(GPIOA, LL_GPIO_PIN_8);
+      } else {
+        LL_GPIO_SetOutputPin(GPIOA, LL_GPIO_PIN_8);
+      }
+      break;
   }
 }
 
@@ -91,31 +136,24 @@ int main()
   ser_addcmd('h', serhelp);
 
 #if DEF_HAVE_ENCODER
+  can_register_id(CANID_STEP_POS, canrxcallback);
+  can_register_id(CANID_STEP_STATE, canrxcallback);
   cs_rot_init();
   cs_rot_setBtnCallback(btnhandler);
 #endif
 #if DEF_HAVE_STEPPER
+  can_register_id(CANID_ROT_POS, canrxcallback);
   cs_step_init();
   cs_step_setmode(CS_STEP_FULL);
 #endif
 
   can_init();
-  can_register_id(22, canrxcallback);
 
   // enable event loop
   os_setcallback(controlloop);
 
-  uint8_t data[2] = "HI";
-  can_ll_txmbx_t mailbox = 0;
 	while (1) {
     os_timeout(250e6, NULL);
-    mailbox = can_send_pkg(22, data, 8, NULL);
-    mailbox = can_send_pkg(22, data, 8, NULL);
-    ser_buf_TypeDef * buffer = ser_get_free_buf();
-    if (buffer != NULL) {
-      snprintf(buffer->buf, SER_CMDBUFLEN, "Can ERRORS: %i\n", can_get_errors());
-      ser_txdata(buffer);
-    }
   }
 	return 0;
 }

@@ -21,37 +21,19 @@ void can_ll_Init() {
   CAN1->MCR |= CAN_MCR_INRQ;
   while(!(CAN1->MSR & CAN_MSR_INAK));
   CAN1->FMR |= CAN_FMR_FINIT;
-  
-  // config can parameters
-  //hcan1.Init.Prescaler = 16;
-  //hcan1.Init.SyncJumpWidth = CAN_SJW_2TQ;
-  //hcan1.Init.TimeSeg1 = CAN_BS1_8TQ;
-  //hcan1.Init.TimeSeg2 = CAN_BS2_8TQ;
   CAN1->BTR = (16U & CAN_BTR_BRP_Msk) | ((8U-1U)<<CAN_BTR_TS1_Pos) | ((8U-1U)<<CAN_BTR_TS2_Pos) | ((2U-1U)<<CAN_BTR_SJW_Pos);
 
-  //hcan1.Init.Mode = CAN_MODE_NORMAL;
   // enable silent loopback in case of no can shield
+#if !DEF_HAVE_CAN
   CAN1->BTR |= CAN_BTR_LBKM | CAN_BTR_SILM;
   //CAN1->BTR |= CAN_BTR_LBKM;
+#endif
 
-  // defaults
-  //hcan1.Init.TimeTriggeredMode = DISABLE;
-
-  //hcan1.Init.AutoBusOff = ENABLE;
   CAN1->MCR |= CAN_MCR_ABOM;
 
-  // defaults, maybe enable?
   CAN1->MCR |= CAN_MCR_AWUM;
-  //hcan1.Init.AutoWakeUp = DISABLE;
 
-  // maybe dont do this
-  //hcan1.Init.AutoRetransmission = DISABLE;
-
-  // defaults
-  //hcan1.Init.ReceiveFifoLocked = DISABLE;
-  //hcan1.Init.TransmitFifoPriority = DISABLE;
-
-	//HAL_CAN_ConfigFilter(&hcan1, &canfilter);
+  // can filters
   CAN1->FA1R = 1U;
   CAN1->sFilterRegister[0].FR1 = 0;
   CAN1->sFilterRegister[0].FR2 = 0;

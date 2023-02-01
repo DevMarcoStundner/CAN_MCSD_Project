@@ -22,7 +22,7 @@
 typedef struct can_pkg_t can_pkg_t;
 struct can_pkg_t {
   uint32_t id;
-  uint8_t * data;
+  uint8_t data[8];
   uint8_t len;
 };
 
